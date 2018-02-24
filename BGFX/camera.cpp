@@ -154,7 +154,7 @@ struct Camera
 			m_mouseLast.m_my = m_mouseNow.m_my;
 		}
 
-		entry::GamepadHandle handle = { 0 };
+		/*entry::GamepadHandle handle = { 0 };
 		m_horizontalAngle += m_gamepadSpeed * inputGetGamepadAxis(handle, entry::GamepadAxis::RightX)/32768.0f;
 		m_verticalAngle   -= m_gamepadSpeed * inputGetGamepadAxis(handle, entry::GamepadAxis::RightY)/32768.0f;
 		const int32_t gpx = inputGetGamepadAxis(handle, entry::GamepadAxis::LeftX);
@@ -162,7 +162,7 @@ struct Camera
 		m_keys |= gpx < -16834 ? CAMERA_KEY_LEFT     : 0;
 		m_keys |= gpx >  16834 ? CAMERA_KEY_RIGHT    : 0;
 		m_keys |= gpy < -16834 ? CAMERA_KEY_FORWARD  : 0;
-		m_keys |= gpy >  16834 ? CAMERA_KEY_BACKWARD : 0;
+		m_keys |= gpy >  16834 ? CAMERA_KEY_BACKWARD : 0;*/
 
 		float direction[3] =
 		{
@@ -267,6 +267,11 @@ struct Camera
 		bx::memCopy(m_eye, _pos, sizeof(float)*3);
 	}
 
+	void setFocus(const float* _pos)
+	{
+		bx::memCopy(m_at, _pos, sizeof(float) * 3);
+	}
+
 	void setVerticalAngle(float _verticalAngle)
 	{
 		m_verticalAngle = _verticalAngle;
@@ -310,6 +315,11 @@ void cameraDestroy()
 void cameraSetPosition(const float* _pos)
 {
 	s_camera->setPosition(_pos);
+}
+
+void cameraSetFocus(const float* _pos)
+{
+	s_camera->setFocus(_pos);
 }
 
 void cameraSetHorizontalAngle(float _horizontalAngle)

@@ -25,6 +25,9 @@ void cameraDestroy();
 void cameraSetPosition(const float* _pos);
 
 ///
+void cameraSetFocus(const float* _pos);
+
+///
 void cameraSetHorizontalAngle(float _horizontalAngle);
 
 ///

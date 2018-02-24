@@ -4,10 +4,11 @@
 #include <functional>
 #include <map>
 
-#include "Scene/SceneImportOptions.h"
+#include "Resource/AgResource.h"
+#include "Scene/AgSceneImportOptions.h"
 
 namespace ambergris {
-	struct BgfxNodeHeirarchy;
+	struct AgMesh;
 }
 
 namespace ambergris_fbx {
@@ -15,7 +16,7 @@ namespace ambergris_fbx {
 	class FbxImportManager
 	{
 	public:
-		typedef std::function<void(ambergris::BgfxNodeHeirarchy*)>	SmtFbxMeshCBFunc;
+		typedef std::function<void(ambergris::AgMesh*)>	SmtFbxMeshCBFunc;
 	public:
 		FbxImportManager();
 		~FbxImportManager();
@@ -31,15 +32,16 @@ namespace ambergris_fbx {
 		int	GetUpAxis();
 	protected:
 		void _ImportSceneInfo(FbxScene *fbx_scene);
-		void _ExtractMesh(ambergris::BgfxNodeHeirarchy& renderNode, FbxMesh *pMesh);
+		void _ParseTexture(FbxScene *fbx_scene);
+		void _ExtractMesh(ambergris::AgMesh& renderNode, FbxMesh *pMesh);
 		void _ParseMesh(FbxNode* node);
 		void _TraverseNodeRecursive(FbxNode* node);
 	private:
 		FbxManager* m_pSdkManager;
 		FbxScene* m_pScene;
 
-		ambergris::SceneImportOptions m_import_options;
-		typedef std::map<FbxMesh*, int> InstanceMap;
+		ambergris::AgSceneImportOptions m_import_options;
+		typedef std::map<FbxMesh*, ambergris::AgResource::Handle> InstanceMap;
 		InstanceMap m_instance_map;
 
 		// Vars

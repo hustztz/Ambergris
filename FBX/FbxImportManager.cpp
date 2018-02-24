@@ -1,7 +1,14 @@
 #include "FbxImportManager.h"
 #include "FbxUtils.h"
-#include "Scene\BgfxNodeHeirarchy.h"
-#include "Scene\SceneGeometryResource.h"
+#include "Scene\AgSceneDatabase.h"
+#include "Resource\AgGeometryResourceManager.h"
+#include "Resource\AgTexture.h"
+#include "Resource\AgMaterial.h"
+
+#include "BGFX/entry/entry.h"//TODO
+
+#include <assert.h>
+#include <vector>
 
 #ifdef FBX_IMPORT_PROFILE_ENABLE
 #include "profiler/code_profiler.h"
@@ -232,7 +239,7 @@ namespace ambergris_fbx {
 		return ElementIndex;
 	}
 
-	void FbxImportManager::_ExtractMesh(ambergris::BgfxNodeHeirarchy& renderNode, FbxMesh *pMesh)
+	void FbxImportManager::_ExtractMesh(ambergris::AgMesh& renderNode, FbxMesh *pMesh)
 	{
 		if (!pMesh)
 			return;
@@ -253,6 +260,14 @@ namespace ambergris_fbx {
 		if (n_polygonCount <= 0)
 			return;
 
+		struct SubMesh
+		{
+			SubMesh() : m_material_index(-1) {};
+			int		m_material_index;
+			vector<int>	m_primitives;
+		};
+		vector<SubMesh>	subMeshes;
+
 		FbxLayerElementArrayTemplate<int>* lMaterialIndice = NULL;
 		FbxLayerElement::EMappingMode lMaterialMappingMode = FbxGeometryElement::eNone;
 		const int n_materials = pMesh->GetNode()->GetMaterialCount();
@@ -269,18 +284,18 @@ namespace ambergris_fbx {
 					if (material_id < 0 || material_id >= (int)n_materials) {
 						material_id = 0;
 					}
-					BgfxNodeHeirarchy::SubMesh subMesh;
+					SubMesh subMesh;
 					subMesh.m_material_index = material_id;
 					subMesh.m_primitives.clear();
 					for (int poly_index = 0; poly_index < n_polygonCount; poly_index++) {
 						subMesh.m_primitives.push_back(poly_index);
 					}
-					renderNode.m_subMesh.push_back(subMesh);
+					subMeshes.push_back(subMesh);
 				}
 				else if (lMaterialMappingMode == FbxLayerElement::eByPolygon) {
 					lMaterialIndice = &lMaterialElement->GetIndexArray();
 					int n_material_ids = lMaterialIndice->GetCount();
-					renderNode.m_subMesh.resize(n_materials);
+					subMeshes.resize(n_materials);
 					for (int poly_index = 0; poly_index < n_polygonCount; poly_index++) {
 						int material_id = 0;
 						if (poly_index < n_material_ids)
@@ -290,8 +305,8 @@ namespace ambergris_fbx {
 								material_id = 0;
 							}
 						}
-						renderNode.m_subMesh[material_id].m_material_index = material_id;
-						renderNode.m_subMesh[material_id].m_primitives.push_back(poly_index);
+						subMeshes[material_id].m_material_index = material_id;
+						subMeshes[material_id].m_primitives.push_back(poly_index);
 					}
 				}
 			}
@@ -309,7 +324,19 @@ namespace ambergris_fbx {
 		// Two floats for every UV.
 		const int UV_STRIDE = 2;
 
-		BgfxMesh* renderMesh = new BgfxMesh;
+		struct AgFbxMesh
+		{
+			AgFbxMesh() : m_bAllByControlPoint(false) {
+			};
+
+			bool					m_bAllByControlPoint;	// Save data in VBO by control point or by polygon vertex.
+			bgfx::VertexDecl		m_decl;
+			TBuffer<uint8_t>		m_vertex_buffer;
+			TBuffer<uint16_t>		m_index_buffer;
+
+		};
+
+		AgFbxMesh fbxMesh;
 		// Congregate all the data of a mesh to be cached in VBOs.
 		// If normal or UV is by polygon vertex, record all vertex attributes by polygon vertex.
 		bool hasNormal = pMesh->GetElementNormalCount() > 0;
@@ -327,7 +354,7 @@ namespace ambergris_fbx {
 			}
 			if (hasNormal && lNormalMappingMode != FbxGeometryElement::eByControlPoint)
 			{
-				renderMesh->m_bAllByControlPoint = false;
+				fbxMesh.m_bAllByControlPoint = false;
 			}
 		}
 		const char * lUVName = NULL;
@@ -340,7 +367,7 @@ namespace ambergris_fbx {
 			}
 			if (hasUV && lUVMappingMode != FbxGeometryElement::eByControlPoint)
 			{
-				renderMesh->m_bAllByControlPoint = false;
+				fbxMesh.m_bAllByControlPoint = false;
 			}
 
 			FbxStringList lUVNames;
@@ -356,33 +383,33 @@ namespace ambergris_fbx {
 		}
 
 		// Allocate streams on target Geometry object
-		renderMesh->m_decl.begin();
-		renderMesh->m_decl.add(bgfx::Attrib::Position, VERTEX_STRIDE, bgfx::AttribType::Float);
+		fbxMesh.m_decl.begin();
+		fbxMesh.m_decl.add(bgfx::Attrib::Position, VERTEX_STRIDE, bgfx::AttribType::Float);
 
 		if (hasNormal)
 		{
 			if (m_import_options.m_pack_normal)
 			{
-				renderMesh->m_decl.add(bgfx::Attrib::Normal, NORMAL_STRIDE, bgfx::AttribType::Uint8, true, true);
+				fbxMesh.m_decl.add(bgfx::Attrib::Normal, NORMAL_STRIDE, bgfx::AttribType::Uint8, true, true);
 				if (hasTangent)
 				{
-					renderMesh->m_decl.add(bgfx::Attrib::Tangent, TANGENT_STRIDE, bgfx::AttribType::Uint8, true, true);
+					fbxMesh.m_decl.add(bgfx::Attrib::Tangent, TANGENT_STRIDE, bgfx::AttribType::Uint8, true, true);
 				}
 				if (hasBinormal)
 				{
-					renderMesh->m_decl.add(bgfx::Attrib::Bitangent, TANGENT_STRIDE, bgfx::AttribType::Uint8, true, true);
+					fbxMesh.m_decl.add(bgfx::Attrib::Bitangent, TANGENT_STRIDE, bgfx::AttribType::Uint8, true, true);
 				}
 			}
 			else
 			{
-				renderMesh->m_decl.add(bgfx::Attrib::Normal, NORMAL_STRIDE, bgfx::AttribType::Float);
+				fbxMesh.m_decl.add(bgfx::Attrib::Normal, NORMAL_STRIDE, bgfx::AttribType::Float);
 				if (hasTangent)
 				{
-					renderMesh->m_decl.add(bgfx::Attrib::Tangent, TANGENT_STRIDE, bgfx::AttribType::Float);
+					fbxMesh.m_decl.add(bgfx::Attrib::Tangent, TANGENT_STRIDE, bgfx::AttribType::Float);
 				}
 				if (hasBinormal)
 				{
-					renderMesh->m_decl.add(bgfx::Attrib::Bitangent, TANGENT_STRIDE, bgfx::AttribType::Float);
+					fbxMesh.m_decl.add(bgfx::Attrib::Bitangent, TANGENT_STRIDE, bgfx::AttribType::Float);
 				}
 			}
 		}
@@ -395,11 +422,11 @@ namespace ambergris_fbx {
 			for (int i = 0; i < n_uv_channels; i++) {
 				if (m_import_options.m_pack_uv)
 				{
-					renderMesh->m_decl.add(bgfx::Attrib::Enum((int)bgfx::Attrib::TexCoord0 + i), UV_STRIDE, bgfx::AttribType::Half);
+					fbxMesh.m_decl.add(bgfx::Attrib::Enum((int)bgfx::Attrib::TexCoord0 + i), UV_STRIDE, bgfx::AttribType::Half);
 				}
 				else
 				{
-					renderMesh->m_decl.add(bgfx::Attrib::Enum((int)bgfx::Attrib::TexCoord0 + i), UV_STRIDE, bgfx::AttribType::Float);
+					fbxMesh.m_decl.add(bgfx::Attrib::Enum((int)bgfx::Attrib::TexCoord0 + i), UV_STRIDE, bgfx::AttribType::Float);
 				}
 			}
 		}
@@ -412,23 +439,23 @@ namespace ambergris_fbx {
 		//for (int i = 0; i < n_color_channels; i++)
 		if (n_color_channels > 1)
 		{
-			renderMesh->m_decl.add(bgfx::Attrib::Color0, COLOR_STRIDE, bgfx::AttribType::Uint8, true);
+			fbxMesh.m_decl.add(bgfx::Attrib::Color0, COLOR_STRIDE, bgfx::AttribType::Uint8, true);
 		}
-		renderMesh->m_decl.end();
-		const uint16_t stride = renderMesh->m_decl.getStride();
+		fbxMesh.m_decl.end();
+		const uint16_t stride = fbxMesh.m_decl.getStride();
 		// TODO
-		renderMesh->m_bAllByControlPoint = false;
+		fbxMesh.m_bAllByControlPoint = false;
 
 		// Allocate the array memory, by control point or by polygon vertex.
 		int nPolygonVertexCount = pMesh->GetControlPointsCount();
-		if (!renderMesh->m_bAllByControlPoint)
+		if (!fbxMesh.m_bAllByControlPoint)
 		{
 			nPolygonVertexCount = n_polygonCount * TRIANGLE_VERTEX_COUNT;
 		}
-		renderMesh->m_vertex_buffer.Resize(nPolygonVertexCount * stride * sizeof(uint8_t));
-		uint8_t* vertexData = const_cast<uint8_t*>(renderMesh->m_vertex_buffer.GetData());
-		renderMesh->m_index_buffer.Resize(nPolygonVertexCount * sizeof(uint16_t));
-		uint16_t* indexData = const_cast<uint16_t*>(renderMesh->m_index_buffer.GetData());
+		fbxMesh.m_vertex_buffer.Resize(nPolygonVertexCount * stride * sizeof(uint8_t));
+		uint8_t* vertexData = const_cast<uint8_t*>(fbxMesh.m_vertex_buffer.GetData());
+		fbxMesh.m_index_buffer.Resize(nPolygonVertexCount * sizeof(uint16_t));
+		uint16_t* indexData = const_cast<uint16_t*>(fbxMesh.m_index_buffer.GetData());
 
 		// Populate the array with vertex attribute, if by control point.
 		const FbxVector4 * lControlPoints = pMesh->GetControlPoints();
@@ -436,20 +463,20 @@ namespace ambergris_fbx {
 		FbxVector4 lCurrentNormal;
 		FbxVector2 lCurrentUV;
 		FbxColor lCurrentColor;
-		if (renderMesh->m_bAllByControlPoint)
+		if (fbxMesh.m_bAllByControlPoint)
 		{
 			const FbxGeometryElementNormal * lNormalElement = NULL;
 			const FbxGeometryElementUV * lUVElement = NULL;
 			const FbxGeometryElementVertexColor * lColorElement = NULL;
-			if (renderMesh->m_decl.has(bgfx::Attrib::Normal))
+			if (fbxMesh.m_decl.has(bgfx::Attrib::Normal))
 			{
 				lNormalElement = pMesh->GetElementNormal(0);
 			}
-			if (renderMesh->m_decl.has(bgfx::Attrib::TexCoord0))
+			if (fbxMesh.m_decl.has(bgfx::Attrib::TexCoord0))
 			{
 				lUVElement = pMesh->GetElementUV(0);
 			}
-			if (renderMesh->m_decl.has(bgfx::Attrib::TexCoord0))
+			if (fbxMesh.m_decl.has(bgfx::Attrib::TexCoord0))
 			{
 				lColorElement = pMesh->GetElementVertexColor(0);
 			}
@@ -457,14 +484,14 @@ namespace ambergris_fbx {
 			{
 				// Save the vertex position.
 				lCurrentVertex = lControlPoints[nIndex];
-				uint16_t positionOffset = renderMesh->m_decl.getOffset(bgfx::Attrib::Position);
+				uint16_t positionOffset = fbxMesh.m_decl.getOffset(bgfx::Attrib::Position);
 				float* pos = reinterpret_cast<float*>(vertexData + stride * nIndex + positionOffset);
 				pos[0] = static_cast<float>(lCurrentVertex[0]);
 				pos[1] = static_cast<float>(lCurrentVertex[1]);
 				pos[2] = static_cast<float>(lCurrentVertex[2]);
 
 				// Save the normal.
-				if (renderMesh->m_decl.has(bgfx::Attrib::Normal) && lNormalElement)
+				if (fbxMesh.m_decl.has(bgfx::Attrib::Normal) && lNormalElement)
 				{
 					int lNormalIndex = nIndex;
 					if (lNormalElement->GetReferenceMode() == FbxLayerElement::eIndexToDirect)
@@ -477,10 +504,10 @@ namespace ambergris_fbx {
 					bgfx::AttribType::Enum type;
 					bool normalized;
 					bool asInt;
-					renderMesh->m_decl.decode(bgfx::Attrib::Normal, num, type, normalized, asInt);
+					fbxMesh.m_decl.decode(bgfx::Attrib::Normal, num, type, normalized, asInt);
 					if (bgfx::AttribType::Float == type)
 					{
-						uint16_t normalOffset = renderMesh->m_decl.getOffset(bgfx::Attrib::Normal);
+						uint16_t normalOffset = fbxMesh.m_decl.getOffset(bgfx::Attrib::Normal);
 						float* norm = reinterpret_cast<float*>(vertexData + stride * nIndex + normalOffset);
 						norm[0] = static_cast<float>(lCurrentNormal[0]);
 						norm[1] = static_cast<float>(lCurrentNormal[1]);
@@ -492,12 +519,12 @@ namespace ambergris_fbx {
 						norm[0] = static_cast<float>(lCurrentNormal[0]);
 						norm[1] = static_cast<float>(lCurrentNormal[1]);
 						norm[2] = static_cast<float>(lCurrentNormal[2]);
-						bgfx::vertexPack(norm, true, bgfx::Attrib::Normal, renderMesh->m_decl, vertexData, nIndex);
+						bgfx::vertexPack(norm, true, bgfx::Attrib::Normal, fbxMesh.m_decl, vertexData, nIndex);
 					}
 				}
 
 				// Save the UV.
-				if (renderMesh->m_decl.has(bgfx::Attrib::TexCoord0) && lUVElement)
+				if (fbxMesh.m_decl.has(bgfx::Attrib::TexCoord0) && lUVElement)
 				{
 					int lUVIndex = nIndex;
 					if (lUVElement->GetReferenceMode() == FbxLayerElement::eIndexToDirect)
@@ -510,10 +537,10 @@ namespace ambergris_fbx {
 					bgfx::AttribType::Enum type;
 					bool normalized;
 					bool asInt;
-					renderMesh->m_decl.decode(bgfx::Attrib::TexCoord0, num, type, normalized, asInt);
+					fbxMesh.m_decl.decode(bgfx::Attrib::TexCoord0, num, type, normalized, asInt);
 					if (bgfx::AttribType::Float == type)
 					{
-						uint16_t uvOffset = renderMesh->m_decl.getOffset(bgfx::Attrib::TexCoord0);
+						uint16_t uvOffset = fbxMesh.m_decl.getOffset(bgfx::Attrib::TexCoord0);
 						float* uv = reinterpret_cast<float*>(vertexData + stride * nIndex + uvOffset);
 						uv[0] = static_cast<float>(lCurrentUV[0]);
 						uv[1] = static_cast<float>(lCurrentUV[1]);
@@ -523,11 +550,11 @@ namespace ambergris_fbx {
 						float uv[2];
 						uv[0] = static_cast<float>(lCurrentUV[0]);
 						uv[1] = static_cast<float>(lCurrentUV[1]);
-						bgfx::vertexPack(uv, true, bgfx::Attrib::TexCoord0, renderMesh->m_decl, vertexData, nIndex);
+						bgfx::vertexPack(uv, true, bgfx::Attrib::TexCoord0, fbxMesh.m_decl, vertexData, nIndex);
 					}
 				}
 				// Save the color.
-				if (renderMesh->m_decl.has(bgfx::Attrib::Color0) && lColorElement)
+				if (fbxMesh.m_decl.has(bgfx::Attrib::Color0) && lColorElement)
 				{
 					int lColorIndex = nIndex;
 					if (lColorElement->GetReferenceMode() == FbxLayerElement::eIndexToDirect)
@@ -536,7 +563,7 @@ namespace ambergris_fbx {
 					}
 					lCurrentColor = lColorElement->GetDirectArray().GetAt(lColorIndex);
 
-					uint16_t colorOffset = renderMesh->m_decl.getOffset(bgfx::Attrib::Color0);
+					uint16_t colorOffset = fbxMesh.m_decl.getOffset(bgfx::Attrib::Color0);
 					uint32_t* col = reinterpret_cast<uint32_t*>(vertexData + stride * nIndex + colorOffset);
 					*col = rgbaToAbgr((int)(lCurrentColor[0] * 255) % 255, (int)(lCurrentColor[1] * 255) % 255, (int)(lCurrentColor[2] * 255) % 255, 0xff);
 				}
@@ -550,7 +577,7 @@ namespace ambergris_fbx {
 			{
 				const int nControlPointIndex = pMesh->GetPolygonVertex(nPolygonIndex, nVerticeIndex);
 				const int nIndex = nPolygonIndex*TRIANGLE_VERTEX_COUNT + nVerticeIndex;
-				if (renderMesh->m_bAllByControlPoint)
+				if (fbxMesh.m_bAllByControlPoint)
 				{
 					indexData[nIndex] = static_cast<unsigned int>(nControlPointIndex);
 				}
@@ -560,14 +587,14 @@ namespace ambergris_fbx {
 					indexData[nIndex] = static_cast<unsigned int>(nIndex);
 
 					lCurrentVertex = lControlPoints[nControlPointIndex];
-					uint16_t positionOffset = renderMesh->m_decl.getOffset(bgfx::Attrib::Position);
+					uint16_t positionOffset = fbxMesh.m_decl.getOffset(bgfx::Attrib::Position);
 					float* pos = reinterpret_cast<float*>(vertexData + stride * nIndex + positionOffset);
 					pos[0] = static_cast<float>(lCurrentVertex[0]);
 					pos[1] = static_cast<float>(lCurrentVertex[1]);
 					pos[2] = static_cast<float>(lCurrentVertex[2]);
 
 					// Save the normal.
-					if (renderMesh->m_decl.has(bgfx::Attrib::Normal))
+					if (fbxMesh.m_decl.has(bgfx::Attrib::Normal))
 					{
 						pMesh->GetPolygonVertexNormal(nPolygonIndex, nVerticeIndex, lCurrentNormal);
 
@@ -575,10 +602,10 @@ namespace ambergris_fbx {
 						bgfx::AttribType::Enum type;
 						bool normalized;
 						bool asInt;
-						renderMesh->m_decl.decode(bgfx::Attrib::Normal, num, type, normalized, asInt);
+						fbxMesh.m_decl.decode(bgfx::Attrib::Normal, num, type, normalized, asInt);
 						if (bgfx::AttribType::Float == type)
 						{
-							uint16_t normalOffset = renderMesh->m_decl.getOffset(bgfx::Attrib::Normal);
+							uint16_t normalOffset = fbxMesh.m_decl.getOffset(bgfx::Attrib::Normal);
 							float* norm = reinterpret_cast<float*>(vertexData + stride * nIndex + normalOffset);
 							norm[0] = static_cast<float>(lCurrentNormal[0]);
 							norm[1] = static_cast<float>(lCurrentNormal[1]);
@@ -590,11 +617,11 @@ namespace ambergris_fbx {
 							norm[0] = static_cast<float>(lCurrentNormal[0]);
 							norm[1] = static_cast<float>(lCurrentNormal[1]);
 							norm[2] = static_cast<float>(lCurrentNormal[2]);
-							bgfx::vertexPack(norm, true, bgfx::Attrib::Normal, renderMesh->m_decl, vertexData, nIndex);
+							bgfx::vertexPack(norm, true, bgfx::Attrib::Normal, fbxMesh.m_decl, vertexData, nIndex);
 						}
 					}
 					// Save the UV.
-					if (renderMesh->m_decl.has(bgfx::Attrib::TexCoord0) && lUVName)
+					if (fbxMesh.m_decl.has(bgfx::Attrib::TexCoord0) && lUVName)
 					{
 						bool lUnmappedUV;
 						pMesh->GetPolygonVertexUV(nPolygonIndex, nVerticeIndex, lUVName, lCurrentUV, lUnmappedUV);
@@ -603,10 +630,10 @@ namespace ambergris_fbx {
 						bgfx::AttribType::Enum type;
 						bool normalized;
 						bool asInt;
-						renderMesh->m_decl.decode(bgfx::Attrib::TexCoord0, num, type, normalized, asInt);
+						fbxMesh.m_decl.decode(bgfx::Attrib::TexCoord0, num, type, normalized, asInt);
 						if (bgfx::AttribType::Float == type)
 						{
-							uint16_t uvOffset = renderMesh->m_decl.getOffset(bgfx::Attrib::TexCoord0);
+							uint16_t uvOffset = fbxMesh.m_decl.getOffset(bgfx::Attrib::TexCoord0);
 							float* uv = reinterpret_cast<float*>(vertexData + stride * nIndex + uvOffset);
 							uv[0] = static_cast<float>(lCurrentUV[0]);
 							uv[1] = static_cast<float>(lCurrentUV[1]);
@@ -616,17 +643,17 @@ namespace ambergris_fbx {
 							float uv[2];
 							uv[0] = static_cast<float>(lCurrentUV[0]);
 							uv[1] = static_cast<float>(lCurrentUV[1]);
-							bgfx::vertexPack(uv, true, bgfx::Attrib::TexCoord0, renderMesh->m_decl, vertexData, nIndex);
+							bgfx::vertexPack(uv, true, bgfx::Attrib::TexCoord0, fbxMesh.m_decl, vertexData, nIndex);
 						}
 					}
 					// Save the color.
-					if (renderMesh->m_decl.has(bgfx::Attrib::Color0))
+					if (fbxMesh.m_decl.has(bgfx::Attrib::Color0))
 					{
 						const FbxLayerElementVertexColor *Colors = pMesh->GetElementVertexColor(0);
 						if (Colors)
 						{
 							const FbxColor &Color = Colors->GetDirectArray()[GetLayerElementIndex(Colors, nControlPointIndex, nIndex, nPolygonIndex)];
-							uint16_t colorOffset = renderMesh->m_decl.getOffset(bgfx::Attrib::Color0);
+							uint16_t colorOffset = fbxMesh.m_decl.getOffset(bgfx::Attrib::Color0);
 							uint32_t* col = reinterpret_cast<uint32_t*>(vertexData + stride * nIndex + colorOffset);
 							*col = rgbaToAbgr((int)(Color[0] * 255) % 255, (int)(Color[1] * 255) % 255, (int)(Color[2] * 255) % 255, 0xff);
 						}
@@ -634,7 +661,86 @@ namespace ambergris_fbx {
 				}
 			}
 		}
-		renderNode.m_mesh_handle = Singleton<SceneGeometryResource>::instance().AppendMesh(renderMesh);
+
+		// To ag database
+		if (subMeshes.empty())
+		{
+			AgVertexBuffer* vb = Singleton<AgGeometryResourceManager>::instance().m_vertex_buffer_pool.allocate<AgVertexBuffer>(entry::getAllocator());
+			AgIndexBuffer* ib = Singleton<AgGeometryResourceManager>::instance().m_index_buffer_pool.allocate<AgIndexBuffer>(entry::getAllocator());
+			if (vb && ib)
+			{
+				ib->m_bAllByControlPoint = fbxMesh.m_bAllByControlPoint;
+				ib->m_index_buffer = fbxMesh.m_index_buffer;
+				vb->m_decl = fbxMesh.m_decl;
+				vb->m_vertex_buffer = fbxMesh.m_vertex_buffer;
+				AgMesh::Geometry scene_geom;
+				scene_geom.material_handle = AgMaterial::E_LAMBERT;
+				scene_geom.vertex_buffer_handle = vb->m_handle;
+				scene_geom.index_buffer_handle = ib->m_handle;
+				renderNode.m_geometries.push_back(scene_geom);
+			}
+		}
+		else
+		{
+			const unsigned int index_buffer_size = fbxMesh.m_index_buffer.GetSize();
+			for (int i = 0; i < subMeshes.size(); ++i)
+			{
+				AgVertexBuffer* vb = Singleton<AgGeometryResourceManager>::instance().m_vertex_buffer_pool.allocate<AgVertexBuffer>(entry::getAllocator());
+				AgIndexBuffer* ib = Singleton<AgGeometryResourceManager>::instance().m_index_buffer_pool.allocate<AgIndexBuffer>(entry::getAllocator());
+				if (!vb || !ib)
+					break;
+
+				vb->m_decl = fbxMesh.m_decl;
+				vb->m_vertex_buffer = fbxMesh.m_vertex_buffer;
+
+				const SubMesh& sub_mesh = subMeshes[i];
+				const int nSubMeshPolyCount = (const int)sub_mesh.m_primitives.size();
+				ib->m_bAllByControlPoint = fbxMesh.m_bAllByControlPoint;
+				ib->m_index_buffer.Resize(nSubMeshPolyCount * sizeof(uint16_t));
+				uint16_t* indexData = const_cast<uint16_t*>(fbxMesh.m_index_buffer.GetData());
+				for (int prim_id = 0; prim_id < nSubMeshPolyCount; ++ prim_id)
+				{
+					const int poly_idx = sub_mesh.m_primitives[prim_id];
+					if(poly_idx < 0 || poly_idx >= n_polygonCount)
+						continue;
+					for (int nVerticeIndex = 0; nVerticeIndex < TRIANGLE_VERTEX_COUNT; ++nVerticeIndex)
+					{
+						const int nDstIndex = prim_id*TRIANGLE_VERTEX_COUNT + nVerticeIndex;
+						if (sizeof(uint16_t) * nDstIndex >= index_buffer_size)
+							continue;
+						if (fbxMesh.m_bAllByControlPoint)
+						{
+							const int nControlPointIndex = pMesh->GetPolygonVertex(poly_idx, nVerticeIndex);
+							uint16_t* dst_index_data = indexData + sizeof(uint16_t) * prim_id;
+							*dst_index_data = nControlPointIndex;
+						}
+						else
+						{
+							const int nSrcIndex = poly_idx*TRIANGLE_VERTEX_COUNT + nVerticeIndex;
+							if (sizeof(uint16_t) * nSrcIndex >= index_buffer_size)
+								continue;
+							uint16_t* src_index_data = indexData + sizeof(uint16_t) * nSrcIndex;
+							uint16_t* dst_index_data = indexData + sizeof(uint16_t) * prim_id;
+							*dst_index_data = *src_index_data;
+						}
+					}
+				}
+
+				AgMesh::Geometry scene_geom;
+				scene_geom.vertex_buffer_handle = vb->m_handle;
+				scene_geom.index_buffer_handle = ib->m_handle;
+				switch (sub_mesh.m_material_index)
+				{
+				case 1:
+					scene_geom.material_handle = AgMaterial::E_LAMBERT;
+					break;
+				default:
+					scene_geom.material_handle = AgMaterial::E_LAMBERT;
+					break;
+				}
+				renderNode.m_geometries.push_back(scene_geom);
+			}
+		}
 	}
 
 	void FbxImportManager::_ParseMesh(FbxNode* node)
@@ -648,9 +754,25 @@ namespace ambergris_fbx {
 			return;
 
 		// Output results
-		ambergris::BgfxNodeHeirarchy* renderNode = new ambergris::BgfxNodeHeirarchy;
-		renderNode->m_name = node->GetName();
-		renderNode->m_parent = node->GetParent()->GetName();
+		AgResource::Handle parent_handle = AgResource::kInvalidHandle;
+		AgSceneDatabase& agScene = Singleton<AgSceneDatabase>::instance();
+		for (int i = 0; i < agScene.GetSize(); ++i)
+		{
+			const AgMesh* tmpNode = dynamic_cast<const AgMesh*>(agScene.Get(i));
+			if(!tmpNode)
+				continue;
+			if (std::strcmp(node->GetParent()->GetName(), tmpNode->m_name.c_str()))
+			{
+				parent_handle = tmpNode->m_handle;
+				break;
+			}
+		}
+
+		AgMesh* renderNode = dynamic_cast<AgMesh*>(agScene.allocate<AgMesh>(entry::getAllocator()));
+		if (!renderNode)
+			return;
+		renderNode->m_name = stl::string(node->GetName());
+		renderNode->m_parent_handle = parent_handle;
 
 		// Transform
 		FbxAMatrix lGlobalPosition = pMesh->GetNode()->EvaluateGlobalTransform();
@@ -673,16 +795,43 @@ namespace ambergris_fbx {
 		auto it_instance = m_instance_map.find(pMesh);
 		if (it_instance != m_instance_map.end())
 		{
-			renderNode->m_mesh_handle = it_instance->second;
-			m_meshCBFunc(renderNode);
+			AgMesh* first_node = dynamic_cast<AgMesh*>(agScene.Get(it_instance->second));
+			assert(first_node);
+			if (first_node)
+			{
+				first_node->m_inst_handle = 1;
+				renderNode->m_inst_handle = 1;
+				renderNode->m_geometries = first_node->m_geometries;
+				m_meshCBFunc(renderNode);
+			}
 		}
 		else
 		{
 			_ExtractMesh(*renderNode, pMesh);
+			renderNode->evaluateBoundingBox();
 			m_meshCBFunc(renderNode);
-			m_instance_map.insert(InstanceMap::value_type(pMesh, renderNode->m_mesh_handle));
+			m_instance_map.insert(InstanceMap::value_type(pMesh, renderNode->m_handle));
 		}
 		
 		return;
+	}
+
+	void FbxImportManager::_ParseTexture(FbxScene *pScene)
+	{
+		if (pScene)
+			return;
+
+		const int lTextureCount = pScene->GetTextureCount();
+		//for (int lTextureIndex = 0; lTextureIndex < lTextureCount; ++lTextureIndex)
+		//{
+		//	FbxTexture * lTexture = pScene->GetTexture(lTextureIndex);
+		//	FbxFileTexture * lFileTexture = FbxCast<FbxFileTexture>(lTexture);
+		//	if (lFileTexture && !lFileTexture->GetUserDataPtr())
+		//	{
+		//		// Try to load the texture from absolute path
+		//		const FbxString lFileName = lFileTexture->GetFileName();
+		//		//renderNode.m_mesh_handle = Singleton<ambergris_bgfx::BgfxTextureManager>::instance().Append(renderMesh);
+		//	}
+		//}
 	}
 }
