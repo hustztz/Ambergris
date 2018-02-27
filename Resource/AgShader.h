@@ -24,42 +24,30 @@ namespace ambergris {
 
 			E_COUNT
 		};
-		struct Uniform
-		{
-			enum UniformType
-			{
-				INT,
-				FLOAT,
-				MATRIX4,
-				TIME,
-				COLOR,
-				VEC2,
-				VEC3
-			};
-
-			UniformType type;
-			bgfx::UniformHandle handle;
-		};
 		struct TextureSlot
 		{
 			TextureSlot()
-				: texture_handle(AgResource::kInvalidHandle)
-				, uniform_handle(BGFX_INVALID_HANDLE)
+				: uniform_handle(BGFX_INVALID_HANDLE)
 				, texture_state(0)
 			{}
 
-			AgResource::Handle	texture_handle;
 			bgfx::UniformHandle uniform_handle;
-			uint64_t            texture_state;
-			//uint8_t             texture_stage;
+			uint32_t            texture_state;
 		};
-		static const int MAX_TEXTURE_SLOT_COUNT = 16;
 
-		AgShader() : m_program(BGFX_INVALID_HANDLE), m_texture_slot_count(0) {}
+		AgShader() : m_program(BGFX_INVALID_HANDLE), m_texture_slot_count(0), m_uniform_count(0) {
+			for (uint8_t i = 0; i < MAX_UNIFORM_COUNT; i ++)
+			{
+				m_uniforms[i] = BGFX_INVALID_HANDLE;
+			}
+		}
 
+		static const int MAX_TEXTURE_SLOT_COUNT = 8;
 		TextureSlot				m_texture_slots[MAX_TEXTURE_SLOT_COUNT];
 		uint8_t					m_texture_slot_count;
-		stl::vector<Uniform>	m_uniforms;
+		static const int MAX_UNIFORM_COUNT = 16;
+		bgfx::UniformHandle		m_uniforms[MAX_UNIFORM_COUNT];
+		uint8_t					m_uniform_count;
 		bgfx::ProgramHandle		m_program;
 	};
 

@@ -20,16 +20,16 @@ namespace ambergris {
 		{
 		}
 
-		virtual void DestroyGeometry() override;
-		virtual void Draw(bgfx::ViewId view) const override;
-		virtual bool AppendGeometry(
+		virtual void destroy() override;
+		virtual void draw(bgfx::ViewId view) const override;
+		virtual bool appendGeometry(
 			const float* transform,
 			const bgfx::VertexDecl& decl,
 			const uint8_t* vertBuf, uint32_t vertSize,
 			const uint16_t* indexBuf, uint32_t indexSize) override;
 
-		bool Prepare();
-		bool AppendInstance(const float* data, unsigned int size);
+		bool prepare();
+		bool appendInstance(const float* data, unsigned int size);
 	private:
 		TBuffer<float>				m_instance_buffer;
 		bgfx::InstanceDataBuffer	m_instance_db;

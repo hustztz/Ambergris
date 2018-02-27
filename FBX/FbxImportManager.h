@@ -43,6 +43,7 @@ namespace ambergris_fbx {
 		ambergris::AgSceneImportOptions m_import_options;
 		typedef std::map<FbxMesh*, ambergris::AgResource::Handle> InstanceMap;
 		InstanceMap m_instance_map;
+		FbxAMatrix m_originPosition;
 
 		// Vars
 		FbxString mProjectPath; // current project path deducted from the fbx_filename (anything up to "/units")

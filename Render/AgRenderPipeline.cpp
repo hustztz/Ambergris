@@ -2,19 +2,19 @@
 
 namespace ambergris {
 
-	void AgRenderPipeline::AgRenderQueue::Clear()
+	void AgRenderPipeline::AgRenderQueue::clear()
 	{
 		for each (auto node in m_renderNodes)
 		{
 			if (!node)
 				continue;
-			node->DestroyGeometry();
+			node->destroy();
 			node.reset();
 		}
 		m_renderNodes.clear();
 	}
 
-	void AgRenderPipeline::AgRenderQueue::AppendNode(std::shared_ptr<AgRenderNode> renderNode)
+	void AgRenderPipeline::AgRenderQueue::appendNode(std::shared_ptr<AgRenderNode> renderNode)
 	{
 		if(renderNode)
 			m_renderNodes.push_back(renderNode);
@@ -27,42 +27,43 @@ namespace ambergris {
 
 	AgRenderPipeline::~AgRenderPipeline()
 	{
-		Reset();
+		reset();
 	}
 
-	void AgRenderPipeline::Draw(bgfx::ViewId view) const
+	void AgRenderPipeline::draw(bgfx::ViewId view) const
 	{
+		// TODO: multithread
 		for (int i = 0; i < E_COUNT; i ++)
 		{
 			for (AgRenderQueue::RenderNodeArray::const_iterator node = m_queues[i].m_renderNodes.begin(), nodeEnd = m_queues[i].m_renderNodes.end(); node != nodeEnd; ++node)
 			{
 				const AgRenderNode* itm = node->get();
 				if(itm)
-					itm->Draw(view);
+					itm->draw(view);
 			}
 		}
 	}
 
-	void AgRenderPipeline::Clear(int stage)
+	void AgRenderPipeline::clear(int stage)
 	{
 		if (stage < 0 || stage >= E_COUNT)
 			return;
 
-		m_queues[stage].Clear();
+		m_queues[stage].clear();
 	}
 
-	void AgRenderPipeline::Reset()
+	void AgRenderPipeline::reset()
 	{
 		for (int i = 0; i < E_COUNT; i++)
 		{
-			Clear(i);
+			clear(i);
 		}
 	}
 
-	void AgRenderPipeline::AppendNode(Stage stage, std::shared_ptr<AgRenderNode> renderNode)
+	void AgRenderPipeline::appendNode(Stage stage, std::shared_ptr<AgRenderNode> renderNode)
 	{
 		if (stage <= 0 || stage > E_COUNT)
-			stage = E_SCENE_OPAQUE;
-		m_queues[stage].AppendNode(renderNode);
+			stage = E_STATIC_SCENE_OPAQUE;
+		m_queues[stage].appendNode(renderNode);
 	}
 }

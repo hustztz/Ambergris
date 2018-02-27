@@ -34,6 +34,7 @@ namespace ambergris_fbx {
 	{
 		// Prepare the FBX SDK.
 		InitializeSdkObjects(m_pSdkManager, m_pScene);
+		m_originPosition.SetIdentity();
 	}
 
 	FbxImportManager::~FbxImportManager()
@@ -208,6 +209,7 @@ namespace ambergris_fbx {
 		}
 
 		FbxNode* lRootNode = m_pScene->GetRootNode();
+		m_originPosition = lRootNode->EvaluateGlobalTransform();
 		m_instance_map.clear();
 		_TraverseNodeRecursive(lRootNode);
 		m_instance_map.clear();
@@ -685,6 +687,11 @@ namespace ambergris_fbx {
 			const unsigned int index_buffer_size = fbxMesh.m_index_buffer.GetSize();
 			for (int i = 0; i < subMeshes.size(); ++i)
 			{
+				const SubMesh& sub_mesh = subMeshes[i];
+				const int nSubMeshPolyCount = (const int)sub_mesh.m_primitives.size();
+				if(0 == nSubMeshPolyCount)
+					continue;
+
 				AgVertexBuffer* vb = Singleton<AgGeometryResourceManager>::instance().m_vertex_buffer_pool.allocate<AgVertexBuffer>(entry::getAllocator());
 				AgIndexBuffer* ib = Singleton<AgGeometryResourceManager>::instance().m_index_buffer_pool.allocate<AgIndexBuffer>(entry::getAllocator());
 				if (!vb || !ib)
@@ -693,10 +700,8 @@ namespace ambergris_fbx {
 				vb->m_decl = fbxMesh.m_decl;
 				vb->m_vertex_buffer = fbxMesh.m_vertex_buffer;
 
-				const SubMesh& sub_mesh = subMeshes[i];
-				const int nSubMeshPolyCount = (const int)sub_mesh.m_primitives.size();
 				ib->m_bAllByControlPoint = fbxMesh.m_bAllByControlPoint;
-				ib->m_index_buffer.Resize(nSubMeshPolyCount * sizeof(uint16_t));
+				ib->m_index_buffer.Resize(nSubMeshPolyCount * TRIANGLE_VERTEX_COUNT  * sizeof(uint16_t));
 				uint16_t* indexData = const_cast<uint16_t*>(fbxMesh.m_index_buffer.GetData());
 				for (int prim_id = 0; prim_id < nSubMeshPolyCount; ++ prim_id)
 				{
@@ -711,7 +716,7 @@ namespace ambergris_fbx {
 						if (fbxMesh.m_bAllByControlPoint)
 						{
 							const int nControlPointIndex = pMesh->GetPolygonVertex(poly_idx, nVerticeIndex);
-							uint16_t* dst_index_data = indexData + sizeof(uint16_t) * prim_id;
+							uint16_t* dst_index_data = (uint16_t*)ib->m_index_buffer.GetData() + nDstIndex;
 							*dst_index_data = nControlPointIndex;
 						}
 						else
@@ -719,8 +724,8 @@ namespace ambergris_fbx {
 							const int nSrcIndex = poly_idx*TRIANGLE_VERTEX_COUNT + nVerticeIndex;
 							if (sizeof(uint16_t) * nSrcIndex >= index_buffer_size)
 								continue;
-							uint16_t* src_index_data = indexData + sizeof(uint16_t) * nSrcIndex;
-							uint16_t* dst_index_data = indexData + sizeof(uint16_t) * prim_id;
+							uint16_t* src_index_data = indexData + nSrcIndex;
+							uint16_t* dst_index_data = (uint16_t*)ib->m_index_buffer.GetData() + nDstIndex;
 							*dst_index_data = *src_index_data;
 						}
 					}
@@ -756,9 +761,9 @@ namespace ambergris_fbx {
 		// Output results
 		AgResource::Handle parent_handle = AgResource::kInvalidHandle;
 		AgSceneDatabase& agScene = Singleton<AgSceneDatabase>::instance();
-		for (int i = 0; i < agScene.GetSize(); ++i)
+		for (int i = 0; i < agScene.getSize(); ++i)
 		{
-			const AgMesh* tmpNode = dynamic_cast<const AgMesh*>(agScene.Get(i));
+			const AgMesh* tmpNode = dynamic_cast<const AgMesh*>(agScene.get(i));
 			if(!tmpNode)
 				continue;
 			if (std::strcmp(node->GetParent()->GetName(), tmpNode->m_name.c_str()))
@@ -776,6 +781,11 @@ namespace ambergris_fbx {
 
 		// Transform
 		FbxAMatrix lGlobalPosition = pMesh->GetNode()->EvaluateGlobalTransform();
+		// TODO: need precompute
+		if (m_originPosition.IsIdentity())
+		{
+			m_originPosition = lGlobalPosition;
+		}
 		for (int m = 0; m < 4; m++)
 		{
 			for (int n = 0; n < 4; n++)
@@ -783,6 +793,9 @@ namespace ambergris_fbx {
 				renderNode->m_global_transform[m*4+n] = (float)lGlobalPosition.Get(m, n);
 			}
 		}
+		renderNode->m_global_transform[12] = renderNode->m_global_transform[12] - (float)m_originPosition.Get(3, 0);
+		renderNode->m_global_transform[13] = renderNode->m_global_transform[13] - (float)m_originPosition.Get(3, 1);
+		renderNode->m_global_transform[14] = renderNode->m_global_transform[14] - (float)m_originPosition.Get(3, 2);
 		FbxAMatrix lLocalPosition = pMesh->GetNode()->EvaluateLocalTransform();
 		for (int m = 0; m < 4; m++)
 		{
@@ -791,11 +804,14 @@ namespace ambergris_fbx {
 				renderNode->m_local_transform[m * 4 + n] = (float)lLocalPosition.Get(m, n);
 			}
 		}
+		renderNode->m_local_transform[12] = renderNode->m_local_transform[12] - (float)m_originPosition.Get(3, 0);
+		renderNode->m_local_transform[13] = renderNode->m_local_transform[13] - (float)m_originPosition.Get(3, 1);
+		renderNode->m_local_transform[14] = renderNode->m_local_transform[14] - (float)m_originPosition.Get(3, 2);
 
 		auto it_instance = m_instance_map.find(pMesh);
 		if (it_instance != m_instance_map.end())
 		{
-			AgMesh* first_node = dynamic_cast<AgMesh*>(agScene.Get(it_instance->second));
+			AgMesh* first_node = dynamic_cast<AgMesh*>(agScene.get(it_instance->second));
 			assert(first_node);
 			if (first_node)
 			{

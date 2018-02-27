@@ -7,11 +7,11 @@
 namespace ambergris {
 
 	/*virtual*/
-	void AgTextureManager::Destroy()
+	void AgTextureManager::destroy()
 	{
-		for (int i = 0;i < GetSize(); ++i)
+		for (int i = 0;i < getSize(); ++i)
 		{
-			AgTexture* tex = Get(i);
+			AgTexture* tex = get(i);
 			if(!tex)
 				continue;
 			if (bgfx::isValid(tex->m_tex_handle))
@@ -19,7 +19,7 @@ namespace ambergris {
 				bgfx::destroy(tex->m_tex_handle);
 			}
 		}
-		AgResourceManager<AgTexture>::Destroy();
+		AgResourcePool<AgTexture>::destroy();
 	}
 
 	static void imageReleaseCb(void* _ptr, void* _userData)
@@ -29,7 +29,7 @@ namespace ambergris {
 		bimg::imageFree(imageContainer);
 	}
 
-	AgResource::Handle AgTextureManager::Append(bx::AllocatorI* allocator, bx::FileReaderI* _reader, const char* _name, uint32_t _flags)
+	AgResource::Handle AgTextureManager::append(bx::AllocatorI* allocator, bx::FileReaderI* _reader, const char* _name, uint32_t _flags)
 	{
 		uint32_t size;
 		void* data = fileUtils::load(_reader, allocator, _name, &size);
@@ -87,7 +87,7 @@ namespace ambergris {
 
 		bgfx::setName(handle, _name);
 
-		AgTexture* tex = AgResourceManager<AgTexture>::allocate<AgTexture>(allocator);
+		AgTexture* tex = AgResourcePool<AgTexture>::allocate<AgTexture>(allocator);
 		if (!tex)
 			return AgResource::kInvalidHandle;
 		tex->m_name = stl::string(_name);
@@ -104,13 +104,5 @@ namespace ambergris {
 		tex->m_tex_handle = handle;
 
 		return tex->m_handle;
-	}
-
-	bgfx::TextureHandle AgTextureManager::GetTextureHandle(AgResource::Handle handle) const
-	{
-		const AgTexture* tex = Get(handle);
-		if (!tex)
-			return BGFX_INVALID_HANDLE;
-		return tex->m_tex_handle;
 	}
 }

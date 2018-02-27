@@ -12,27 +12,30 @@ namespace ambergris {
 	{
 	public:
 		AgRenderNode()
-			: m_materialID(AgMaterial::MaterialType::E_LAMBERT)
+			: m_material_handle(AgMaterial::MaterialType::E_LAMBERT)
 		{
+			destroy();
 		}
 		virtual ~AgRenderNode()
 		{
 		}
 
-		virtual void DestroyGeometry();
-		virtual bool Prepare() { return true; }
-		virtual void Draw(bgfx::ViewId view) const;
-		virtual bool AppendGeometry(
+		virtual void destroy();
+		virtual bool prepare() { return true; }
+		virtual void draw(bgfx::ViewId view) const;
+		virtual bool appendGeometry(
 			const float* transform,
 			const bgfx::VertexDecl& decl,
 			const uint8_t* vertBuf, uint32_t vertSize,
 			const uint16_t* indexBuf, uint32_t indexSize);
 
-		void SetMaterial(AgMaterial::MaterialType id) { m_materialID = id; }
-		AgMaterial::MaterialType GetMaterial() const { return m_materialID; }
+		void setMaterial(AgMaterial::Handle id) { m_material_handle = id; }
+		AgMaterial::Handle getMaterial() const { return m_material_handle; }
+		void setTexture(uint8_t slot, AgTexture::Handle tex_handle);
 	protected:
 		bgfx::VertexDecl	m_decl;
-		AgMaterial::MaterialType	m_materialID;
+		AgMaterial::Handle	m_material_handle;
+		AgTexture::Handle	m_texture[AgShader::MAX_TEXTURE_SLOT_COUNT];
 		typedef stl::vector<AgRenderItem> RenderItemArray;
 		RenderItemArray		m_items;
 	};

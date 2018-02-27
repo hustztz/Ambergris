@@ -11,21 +11,21 @@ namespace ambergris {
 	{
 	}
 
-	void AgRenderer::Init(bx::FileReaderI* _reader)
+	void AgRenderer::init(bx::FileReaderI* _reader)
 	{
-		Singleton<AgMaterialManager>::instance().Init(_reader);
+		Singleton<AgMaterialManager>::instance().init(_reader);
 
-		Reset();
+		reset();
 		m_viewId = 0;
 	}
 
-	void AgRenderer::Destroy()
+	void AgRenderer::destroy()
 	{
-		Singleton<AgMaterialManager>::instance().Destroy();
-		m_pipeline.Reset();
+		Singleton<AgMaterialManager>::instance().destroy();
+		m_pipeline.reset();
 	}
 
-	void AgRenderer::Reset()
+	void AgRenderer::reset()
 	{
 		bgfx::setViewClear(0
 			, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH
@@ -33,29 +33,29 @@ namespace ambergris {
 			, 1.0f
 			, 0
 		);
-		m_pipeline.Reset();
+		m_pipeline.reset();
 	}
 	
-	void AgRenderer::Draw()
+	void AgRenderer::draw()
 	{
-		m_pipeline.Draw(m_viewId);
+		m_pipeline.draw(m_viewId);
 	}
 
-	void AgRenderer::AppendNode(std::shared_ptr<AgRenderNode> renderNode)
+	void AgRenderer::appendNode(std::shared_ptr<AgRenderNode> renderNode)
 	{
 		if (!renderNode)
 			return;
-		switch (renderNode->GetMaterial())
+		switch (renderNode->getMaterial())
 		{
 		case AgMaterial::E_LAMBERT:
 		case AgMaterial::E_PHONG:
-			m_pipeline.AppendNode(AgRenderPipeline::E_SCENE_OPAQUE, renderNode);
+			m_pipeline.appendNode(AgRenderPipeline::E_STATIC_SCENE_OPAQUE, renderNode);
 			break;
 		case 3:
-			m_pipeline.AppendNode(AgRenderPipeline::E_SCENE_TRANSPARENT, renderNode);
+			m_pipeline.appendNode(AgRenderPipeline::E_STATIC_SCENE_TRANSPARENT, renderNode);
 			break;
 		default:
-			m_pipeline.AppendNode(AgRenderPipeline::E_SCENE_OPAQUE, renderNode);
+			m_pipeline.appendNode(AgRenderPipeline::E_STATIC_SCENE_OPAQUE, renderNode);
 			break;
 		}
 	}

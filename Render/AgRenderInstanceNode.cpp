@@ -5,13 +5,13 @@
 namespace ambergris {
 
 	/*virtual*/
-	void AgRenderInstanceNode::DestroyGeometry()
+	void AgRenderInstanceNode::destroy()
 	{
-		AgRenderNode::DestroyGeometry();
+		AgRenderNode::destroy();
 	}
 
 	/*virtual*/
-	bool AgRenderInstanceNode::AppendGeometry(
+	bool AgRenderInstanceNode::appendGeometry(
 		const float* transform,
 		const bgfx::VertexDecl& decl,
 		const uint8_t* vertBuf, uint32_t vertSize,
@@ -21,14 +21,14 @@ namespace ambergris {
 		if (!m_items.empty())
 			return false;
 
-		return AgRenderNode::AppendGeometry(
+		return AgRenderNode::appendGeometry(
 			nullptr,
 			decl,
 			vertBuf, vertSize,
 			indexBuf, indexSize);
 	}
 
-	bool AgRenderInstanceNode::AppendInstance(const float* data, unsigned int size)
+	bool AgRenderInstanceNode::appendInstance(const float* data, unsigned int size)
 	{
 		if (0 == m_stride)
 		{
@@ -44,7 +44,7 @@ namespace ambergris {
 		return true;
 	}
 
-	bool AgRenderInstanceNode::Prepare()
+	bool AgRenderInstanceNode::prepare()
 	{
 		if (0 == m_stride)
 			return false;
@@ -62,14 +62,17 @@ namespace ambergris {
 	}
 
 	/*virtual*/
-	void AgRenderInstanceNode::Draw(bgfx::ViewId view) const
+	void AgRenderInstanceNode::draw(bgfx::ViewId view) const
 	{
 		if (m_items.empty())
 			return;
-		uint64_t state = Singleton<AgMaterialManager>::instance().GetRenderState(m_materialID);
-		bgfx::ProgramHandle progHandle = Singleton<AgMaterialManager>::instance().GetProgramHandle(m_materialID);
+		const AgMaterial* mat = Singleton<AgMaterialManager>::instance().get(m_material_handle);
+		if (!mat)
+			return;
+		uint64_t state = mat->m_state_flags;
+		bgfx::ProgramHandle progHandle = mat->getProgramHandle();
 		bgfx::setState(state);
-		m_items[0].SubmitBuffers();
+		m_items[0].submitBuffers();
 		// Set instance data buffer.
 		bgfx::setInstanceDataBuffer(&m_instance_db);
 		bgfx::submit(view, progHandle);

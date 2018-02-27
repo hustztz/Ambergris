@@ -7,17 +7,17 @@ namespace ambergris {
 	class AgResourceContainer
 	{
 	public:
-		virtual ~AgResourceContainer() { Destroy(); }
+		virtual ~AgResourceContainer() { destroy(); }
 
-		virtual void Destroy() {}
-		size_t GetSize() const { return (size_t)S; }
-		const T* Get(AgResource::Handle id) const {
-			if (id >= 0 && id < GetSize())
+		virtual void destroy() {}
+		size_t getSize() const { return (size_t)S; }
+		const T* get(AgResource::Handle id) const {
+			if (id >= 0 && id < getSize())
 				return &m_resource_arr[id];
 			return nullptr;
 		}
-		T* Get(AgResource::Handle id) {
-			if (id >= 0 && id < GetSize())
+		T* get(AgResource::Handle id) {
+			if (id >= 0 && id < getSize())
 				return const_cast<T*>(&m_resource_arr[id]);
 			return nullptr;
 		}

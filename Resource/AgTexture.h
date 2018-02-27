@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Foundation/Singleton.h"
-#include "AgResourceManager.h"
+#include "AgResourcePool.h"
 
 #include <bgfx/bgfx.h>
 #include <tinystl/allocator.h>
@@ -24,12 +24,11 @@ namespace ambergris {
 		bgfx::TextureHandle m_tex_handle;
 	};
 
-	class AgTextureManager : public AgResourceManager<AgTexture>
+	class AgTextureManager : public AgResourcePool<AgTexture>
 	{
 	public:
-		AgResource::Handle Append(bx::AllocatorI* allocator, bx::FileReaderI* _reader, const char* _name, uint32_t _flags);
-		virtual void Destroy() override;
-		bgfx::TextureHandle GetTextureHandle(AgResource::Handle handle) const;
+		AgResource::Handle append(bx::AllocatorI* allocator, bx::FileReaderI* _reader, const char* _name, uint32_t _flags);
+		virtual void destroy() override;
 	protected:
 	private:
 		AgTextureManager() {};

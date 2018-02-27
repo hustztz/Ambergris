@@ -2,6 +2,7 @@
 
 #include "Foundation/Singleton.h"
 #include "AgResourceContainer.h"
+#include "AgShader.h"
 
 #include <bgfx/bgfx.h>
 #include <tinystl/allocator.h>
@@ -26,6 +27,10 @@ namespace ambergris {
 
 		AgMaterial() : m_state_flags(0), m_shader(AgResource::kInvalidHandle) {}
 
+		bgfx::ProgramHandle getProgramHandle() const;
+		uint8_t	getTextureSlotSize() const;
+		const AgShader::TextureSlot* getTextureSlot(uint8_t slot) const;
+
 		stl::string		m_name;
 		uint64_t        m_state_flags;
 		Handle			m_shader;
@@ -34,10 +39,8 @@ namespace ambergris {
 	class AgMaterialManager : public AgResourceContainer<AgMaterial, AgMaterial::E_COUNT>
 	{
 	public:
-		void Init(bx::FileReaderI* _reader);
-		virtual void Destroy() override;
-		uint64_t GetRenderState(AgMaterial::MaterialType id) const;
-		bgfx::ProgramHandle GetProgramHandle(AgMaterial::MaterialType id) const;
+		void init(bx::FileReaderI* _reader);
+		virtual void destroy() override;
 	protected:
 	private:
 		AgMaterialManager() {};

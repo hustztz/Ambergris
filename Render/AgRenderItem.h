@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Resource/AgTexture.h"
 #include <bgfx/bgfx.h>
 
 namespace ambergris {
@@ -9,7 +10,6 @@ namespace ambergris {
 	public:
 		AgRenderItem();
 		AgRenderItem(
-			const float* transform,
 			const bgfx::VertexDecl& decl,
 			const uint8_t* vertBuf, uint32_t vertSize,
 			const uint16_t* indexBuf, uint32_t indexSize);
@@ -17,11 +17,13 @@ namespace ambergris {
 		{
 		}
 
-		void DestroyBuffers();
-		void SubmitBuffers() const;
-		const float* GetTransform() const { return m_mtx; }
+		void setTransform(const float* mtx);
+
+		void destroyBuffers();
+		void submitBuffers() const;
+		const float* getTransform() const { return m_mtx; }
 	protected:
-		void _SetTransform(const float* mtx);
+		void _ResetTransform();
 		void _SetVertexBuffer(const bgfx::VertexDecl& decl, const uint8_t* buffer, uint32_t size);
 		void _SetIndexBuffer(const uint16_t* buffer, uint32_t size);
 

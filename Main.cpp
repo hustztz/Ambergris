@@ -54,7 +54,8 @@ public:
 			return;
 		}
 
-		const AgSceneDatabase& sceneDB = Singleton<AgSceneDatabase>::instance();
+		AgSceneDatabase& sceneDB = Singleton<AgSceneDatabase>::instance();
+		sceneDB.destroy();
 
 		ambergris_fbx::FbxImportManager::SmtFbxMeshCBFunc meshCB(std::bind(&AddMeshToRenderer, std::placeholders::_1));
 		fbxManager.RegisterMeshCBFunc(meshCB);
@@ -63,9 +64,9 @@ public:
 			return;
 
 		AgRenderer& renderer = Singleton<AgRenderer>::instance();
-		renderer.Init(entry::getFileReader() );
+		renderer.init(entry::getFileReader() );
 		if (!AgRenderSceneBridge(renderer, sceneDB))
-			return;
+			assert(false);
 
 		m_timeOffset = bx::getHPCounter();
 
@@ -79,10 +80,10 @@ public:
 		sceneAabb.m_max[0] = std::numeric_limits<float>::min();
 		sceneAabb.m_max[1] = std::numeric_limits<float>::min();
 		sceneAabb.m_max[2] = std::numeric_limits<float>::min();
-		const int nNodeNum = (const int)sceneDB.GetSize();
+		const int nNodeNum = (const int)sceneDB.getSize();
 		for (int i = 0; i < nNodeNum; i++)
 		{
-			const AgMesh* node = dynamic_cast<const AgMesh*>(sceneDB.Get(i));
+			const AgMesh* node = dynamic_cast<const AgMesh*>(sceneDB.get(i));
 			if(!node)
 				continue;
 			Aabb nodeAabb = node->m_bb.m_aabb;
@@ -126,7 +127,7 @@ public:
 		cameraDestroy();
 		imguiDestroy();
 
-		Singleton<AgRenderer>::instance().Destroy();
+		Singleton<AgRenderer>::instance().destroy();
 
 		bgfx::destroy(u_time);
 
@@ -221,7 +222,7 @@ public:
 				cameraUpdate(deltaTime, m_mouseState);
 			}
 
-			Singleton<AgRenderer>::instance().Draw();
+			Singleton<AgRenderer>::instance().draw();
 
 			// Advance to next frame. Rendering thread will be kicked to
 			// process submitted rendering primitives.

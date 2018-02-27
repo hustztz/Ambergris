@@ -9,8 +9,8 @@ namespace ambergris {
 	{
 		struct AgRenderQueue
 		{
-			void Clear();
-			void AppendNode(std::shared_ptr<AgRenderNode> renderNode);
+			void clear();
+			void appendNode(std::shared_ptr<AgRenderNode> renderNode);
 
 			typedef stl::vector<std::shared_ptr<AgRenderNode>> RenderNodeArray;
 			RenderNodeArray m_renderNodes;
@@ -18,8 +18,8 @@ namespace ambergris {
 	public:
 		enum Stage
 		{
-			E_SCENE_OPAQUE = 0,
-			E_SCENE_TRANSPARENT,
+			E_STATIC_SCENE_OPAQUE = 0,
+			E_STATIC_SCENE_TRANSPARENT,
 			E_UI_OPAQUE,
 
 			E_COUNT
@@ -29,10 +29,10 @@ namespace ambergris {
 		~AgRenderPipeline();
 		friend class AgRenderer;
 
-		void AppendNode(Stage stage, std::shared_ptr<AgRenderNode> renderNode);
-		void Draw(bgfx::ViewId view) const;
-		void Clear(int stage);
-		void Reset();
+		void appendNode(Stage stage, std::shared_ptr<AgRenderNode> renderNode);
+		void draw(bgfx::ViewId view) const;
+		void clear(int stage);
+		void reset();
 	private:
 	private:
 		AgRenderQueue m_queues[E_COUNT];

@@ -2,11 +2,11 @@
 
 #include "AgMesh.h"
 #include "Foundation/Singleton.h"
-#include "Resource/AgResourceManager.h"
+#include "Resource/AgResourcePool.h"
 
 namespace ambergris {
 
-	struct AgSceneDatabase : public AgResourceManager<AgObject>
+	struct AgSceneDatabase : public AgResourcePool<AgObject>
 	{
 	public:
 	private:

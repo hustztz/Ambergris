@@ -5,31 +5,32 @@
 namespace ambergris {
 
 	AgRenderItem::AgRenderItem()
+		: m_vbh(BGFX_INVALID_HANDLE)
+		, m_ibh(BGFX_INVALID_HANDLE)
 	{
 	}
 
 	AgRenderItem::AgRenderItem(
-		const float* transform,
 		const bgfx::VertexDecl& decl,
 		const uint8_t* vertBuf, uint32_t vertSize,
 		const uint16_t* indexBuf, uint32_t indexSize)
 	{
-		_SetTransform(transform);
+		_ResetTransform();
 		_SetVertexBuffer(decl, vertBuf, vertSize);
 		_SetIndexBuffer(indexBuf, indexSize);
 	}
 
-	void AgRenderItem::DestroyBuffers()
+	void AgRenderItem::destroyBuffers()
 	{
 		if (bgfx::isValid(m_vbh))
 		{
-			//bgfx::destroy(m_vbh);
-			m_vbh.idx = bgfx::kInvalidHandle;
+			bgfx::destroy(m_vbh);
+			m_vbh = BGFX_INVALID_HANDLE;
 		}
 		if (bgfx::isValid(m_ibh))
 		{
-			//bgfx::destroy(m_ibh);
-			m_ibh.idx = bgfx::kInvalidHandle;
+			bgfx::destroy(m_ibh);
+			m_ibh.idx = BGFX_INVALID_HANDLE;
 		}
 	}
 
@@ -55,24 +56,28 @@ namespace ambergris {
 		m_ibh = bgfx::createIndexBuffer(mem);
 	}
 
-	void AgRenderItem::SubmitBuffers() const
+	void AgRenderItem::submitBuffers() const
 	{
 		bgfx::setTransform(m_mtx);
 		bgfx::setIndexBuffer(m_ibh);
 		bgfx::setVertexBuffer(0, m_vbh);
 	}
 
-	void AgRenderItem::_SetTransform(const float* mtx)
+	void AgRenderItem::setTransform(const float* mtx)
 	{
 		if(mtx)
 			memcpy_s(m_mtx, 16 * sizeof(float), mtx, 16 * sizeof(float));
 		else
 		{
-			m_mtx[0] = m_mtx[5] = m_mtx[9] = m_mtx[15] = 1.0f;
-			m_mtx[1] = m_mtx[2] = m_mtx[3] = m_mtx[4] =
-				m_mtx[6] = m_mtx[7] = m_mtx[8] = m_mtx[10] = 
-				m_mtx[11] = m_mtx[12] = m_mtx[13] = m_mtx[14] = 0.0f;
+			_ResetTransform();
 		}
 	}
 
+	void AgRenderItem::_ResetTransform()
+	{
+		m_mtx[0] = m_mtx[5] = m_mtx[9] = m_mtx[15] = 1.0f;
+		m_mtx[1] = m_mtx[2] = m_mtx[3] = m_mtx[4] =
+			m_mtx[6] = m_mtx[7] = m_mtx[8] = m_mtx[10] =
+			m_mtx[11] = m_mtx[12] = m_mtx[13] = m_mtx[14] = 0.0f;
+	}
 }

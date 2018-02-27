@@ -11,10 +11,10 @@ namespace ambergris {
 	{
 		bool ret = true;
 		AgRenderBaseEvaluator::EvaluateNodeArr eva_node_arr;
-		const int nNodeNum = (const int)sceneDB.GetSize();
+		const int nNodeNum = (const int)sceneDB.getSize();
 		for (int i = 0; i < nNodeNum; i++)
 		{
-			const AgMesh* mesh = dynamic_cast<const AgMesh*>(sceneDB.Get(i));
+			const AgMesh* mesh = dynamic_cast<const AgMesh*>(sceneDB.get(i));
 			if (!mesh)
 				continue;
 			if (mesh->m_inst_handle >= 0)
@@ -33,7 +33,7 @@ namespace ambergris {
 					if (bIsFirstNode)
 					{
 						std::unique_ptr<AgRenderBaseEvaluator> evaluator(new AgRenderMeshEvaluator<AgRenderInstanceNode>(eva_node_arr));
-						ret &= evaluator->Evaluate(*mesh);
+						ret &= evaluator->evaluate(*mesh);
 					}
 					else
 					{
@@ -47,7 +47,7 @@ namespace ambergris {
 								std::shared_ptr<AgRenderInstanceNode> inst_node =
 									std::dynamic_pointer_cast<AgRenderInstanceNode>(eva_node_arr[i].m_renderNode);
 								if (inst_node)
-									ret &= inst_node->AppendInstance(instanceData, stride);
+									ret &= inst_node->appendInstance(instanceData, stride);
 							}
 						}
 					}
@@ -56,15 +56,15 @@ namespace ambergris {
 			else
 			{
 				std::unique_ptr<AgRenderBaseEvaluator> evaluator(new AgRenderMeshEvaluator<AgRenderNode>(eva_node_arr));
-				ret &= evaluator->Evaluate(*mesh);
+				ret &= evaluator->evaluate(*mesh);
 			}
 		}
 
 		for (int i = 0; i < eva_node_arr.size(); ++i)
 		{
 			std::shared_ptr<AgRenderNode> renderNode = eva_node_arr[i].m_renderNode;
-			if(renderNode && renderNode->Prepare())
-				renderer.AppendNode(renderNode);
+			if(renderNode && renderNode->prepare())
+				renderer.appendNode(renderNode);
 		}
 		return ret;
 	}

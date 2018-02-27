@@ -10,6 +10,6 @@ namespace ambergris {
 		AgRenderPointCloudEvaluator(EvaluateNodeArr& nodes) : AgRenderBaseEvaluator(nodes) {}
 		virtual ~AgRenderPointCloudEvaluator() {}
 
-		virtual bool Evaluate(const AgMesh& geomNode) override;
+		virtual bool evaluate(const AgMesh& geomNode) override;
 	};
 }

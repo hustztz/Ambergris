@@ -13,7 +13,7 @@ namespace ambergris {
 		AgRenderMeshEvaluator(EvaluateNodeArr& nodes) : AgRenderBaseEvaluator(nodes)	{}
 		virtual ~AgRenderMeshEvaluator() {}
 
-		virtual bool Evaluate(const AgMesh& geomNode) override
+		virtual bool evaluate(const AgMesh& geomNode) override
 		{
 			const int nSubMeshNum = (const int)geomNode.m_geometries.size();
 			if (0 == nSubMeshNum)
@@ -21,28 +21,21 @@ namespace ambergris {
 
 			for (int i = 0; i < nSubMeshNum; i ++)
 			{
-				const AgVertexBuffer* vb = Singleton<AgGeometryResourceManager>::instance().m_vertex_buffer_pool.Get(geomNode.m_geometries[i].vertex_buffer_handle);
-				const AgIndexBuffer* ib = Singleton<AgGeometryResourceManager>::instance().m_index_buffer_pool.Get(geomNode.m_geometries[i].index_buffer_handle);
+				const AgVertexBuffer* vb = Singleton<AgGeometryResourceManager>::instance().m_vertex_buffer_pool.get(geomNode.m_geometries[i].vertex_buffer_handle);
+				const AgIndexBuffer* ib = Singleton<AgGeometryResourceManager>::instance().m_index_buffer_pool.get(geomNode.m_geometries[i].index_buffer_handle);
 				if (!vb || !ib)
 					continue;
 
-				AgMaterial::MaterialType mat_id = AgMaterial::E_LAMBERT;
-				const AgMaterial* pMaterial =
-					Singleton<AgMaterialManager>::instance().Get(geomNode.m_geometries[i].material_handle);
-				if (pMaterial)
-				{
-					switch (pMaterial->m_handle)
-					{
-					case 0:
-						mat_id = AgMaterial::E_LAMBERT;
-					default:
-						break;
-					}
-				}
-				
 				std::shared_ptr<T> renderNode(new T());
-				renderNode->SetMaterial(mat_id);
-				if (!renderNode->AppendGeometry(
+				renderNode->setMaterial(geomNode.m_geometries[i].material_handle);
+				for (uint8_t tex_stage = 0; tex_stage < AgShader::MAX_TEXTURE_SLOT_COUNT; tex_stage ++)
+				{
+					AgTexture::Handle texture_handle = geomNode.m_geometries[i].texture_handle[tex_stage];
+					if(AgTexture::kInvalidHandle == texture_handle)
+						break;
+					renderNode->setTexture(tex_stage, texture_handle);
+				}
+				if (!renderNode->appendGeometry(
 					geomNode.m_global_transform,
 					vb->m_decl,
 					vb->m_vertex_buffer.GetData(), vb->m_vertex_buffer.GetSize() * sizeof(uint8_t),

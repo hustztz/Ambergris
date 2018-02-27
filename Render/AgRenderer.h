@@ -12,11 +12,11 @@ namespace ambergris {
 	class AgRenderer
 	{
 	public:
-		void Init(bx::FileReaderI* _reader);
-		void Destroy();
-		void Reset();
-		void AppendNode(std::shared_ptr<AgRenderNode> renderNode);
-		void Draw();
+		void init(bx::FileReaderI* _reader);
+		void destroy();
+		void reset();
+		void appendNode(std::shared_ptr<AgRenderNode> renderNode);
+		void draw();
 	protected:
 	private:
 		AgRenderer();

@@ -1,14 +1,43 @@
 #include "AgMaterial.h"
-#include "AgShader.h"
 
 namespace ambergris {
 
-	void AgMaterialManager::Destroy()
+	bgfx::ProgramHandle AgMaterial::getProgramHandle() const
+	{
+		const AgShader* shader = Singleton<AgShaderManager>::instance().get(m_shader);
+		if (!shader)
+			return BGFX_INVALID_HANDLE;
+
+		return shader->m_program;
+	}
+
+	uint8_t	AgMaterial::getTextureSlotSize() const
+	{
+		const AgShader* shader = Singleton<AgShaderManager>::instance().get(m_shader);
+		if (!shader)
+			return 0;
+
+		return shader->m_texture_slot_count;
+	}
+
+	const AgShader::TextureSlot* AgMaterial::getTextureSlot(uint8_t slot) const
+	{
+		const AgShader* shader = Singleton<AgShaderManager>::instance().get(m_shader);
+		if (!shader)
+			return nullptr;
+
+		if (slot >= shader->m_texture_slot_count)
+			return nullptr;
+
+		return &shader->m_texture_slots[slot];
+	}
+
+	void AgMaterialManager::destroy()
 	{
 		Singleton<AgShaderManager>::instance().unloadShader();
 	}
 
-	void AgMaterialManager::Init(bx::FileReaderI* _reader)
+	void AgMaterialManager::init(bx::FileReaderI* _reader)
 	{
 		// Create program from shaders.
 		if (!Singleton<AgShaderManager>::instance().loadShader(_reader))
@@ -16,7 +45,7 @@ namespace ambergris {
 
 		for (int id = 0; id < AgMaterial::E_COUNT; id++)
 		{
-			AgMaterial* mat = Get(id);
+			AgMaterial* mat = get(id);
 			if(!mat)
 				continue;
 			switch (id)
@@ -38,30 +67,6 @@ namespace ambergris {
 				break;
 			}
 		}
-
 	}
 
-	uint64_t AgMaterialManager::GetRenderState(AgMaterial::MaterialType id) const
-	{
-		if (id < 0 || id >= AgMaterial::E_COUNT)
-			return 0;
-		const AgMaterial* mat = Get(id);
-		if (!mat)
-			return 0;
-		return mat->m_state_flags;
-	}
-
-	bgfx::ProgramHandle AgMaterialManager::GetProgramHandle(AgMaterial::MaterialType id) const
-	{
-		if (id < 0 || id >= AgMaterial::E_COUNT)
-			return BGFX_INVALID_HANDLE;
-		const AgMaterial* mat = Get(id);
-		if (!mat)
-			return BGFX_INVALID_HANDLE;
-		const AgShader* shader = Singleton<AgShaderManager>::instance().Get(mat->m_shader);
-		if (!shader)
-			return BGFX_INVALID_HANDLE;
-
-		return shader->m_program;
-	}
 }

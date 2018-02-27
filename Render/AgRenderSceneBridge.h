@@ -26,7 +26,7 @@ namespace ambergris {
 		AgRenderBaseEvaluator(EvaluateNodeArr& nodes) : m_evaluate_nodes(nodes){}
 		virtual ~AgRenderBaseEvaluator() {}
 
-		virtual bool Evaluate(const AgMesh& geomNode) = 0;
+		virtual bool evaluate(const AgMesh& geomNode) = 0;
 	protected:
 		EvaluateNodeArr&			m_evaluate_nodes;
 	};

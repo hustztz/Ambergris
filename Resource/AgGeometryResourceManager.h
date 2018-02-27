@@ -2,16 +2,16 @@
 
 #include "AgVertexBuffer.h"
 #include "AgIndexBuffer.h"
-#include "AgResourceManager.h"
+#include "AgResourcePool.h"
 #include "Foundation/Singleton.h"
 
 namespace ambergris {
 
 	struct AgGeometryResourceManager
 	{
-		typedef AgResourceManager<AgVertexBuffer> VertexBufferPool;
+		typedef AgResourcePool<AgVertexBuffer> VertexBufferPool;
 		VertexBufferPool m_vertex_buffer_pool;
-		typedef AgResourceManager<AgIndexBuffer> IndexBufferPool;
+		typedef AgResourcePool<AgIndexBuffer> IndexBufferPool;
 		IndexBufferPool m_index_buffer_pool;
 	private:
 		AgGeometryResourceManager() {}
