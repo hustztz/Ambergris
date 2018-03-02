@@ -21,9 +21,14 @@ namespace ambergris {
 		}
 
 		virtual void destroy() override;
-		virtual void draw(bgfx::ViewId view) const override;
+		virtual void draw(bgfx::ViewId view,
+			AgShader::Handle shaderHandle,
+			uint64_t state,
+			bool inOcclusionQuery = false,
+			bool needOcclusionCondition = false) override;
 		virtual bool appendGeometry(
 			const float* transform,
+			const uint32_t* pick_id,
 			const bgfx::VertexDecl& decl,
 			const uint8_t* vertBuf, uint32_t vertSize,
 			const uint16_t* indexBuf, uint32_t indexSize) override;

@@ -16,7 +16,7 @@ namespace ambergris {
 		{
 			if (m_node_arr[i].m_mesh_handle == node->m_mesh_handle)
 			{
-				node->m_inst_handle = Singleton<GeometryResourceManager>::instance().mesh_manager.AppendInstance(node->m_mesh_handle, nNodeNum);
+				node->m_inst_handle = Singleton<RenderResourceManager>::instance().mesh_manager.AppendInstance(node->m_mesh_handle, nNodeNum);
 				m_node_arr[i].m_inst_handle = node->m_inst_handle;
 				break;
 			}

@@ -4,7 +4,8 @@
 #include "BGFX/imgui/bgfx_imgui.h"
 
 #include "Render/AgRenderer.h"
-#include "Render/AgRenderMeshEvaluator.h"
+#include "Resource/AgRenderResourceManager.h"
+#include "Render/AgRenderSceneBridge.h"
 #include "FBX/FbxImportManager.h"
 #include "Scene/AgSceneDatabase.h"
 
@@ -32,10 +33,10 @@ public:
 	{
 		Args args(_argc, _argv);
 
-		m_width  = _width;
+		m_width = _width;
 		m_height = _height;
-		m_debug  = BGFX_DEBUG_NONE;
-		m_reset  = BGFX_RESET_VSYNC;
+		m_debug = BGFX_DEBUG_NONE;
+		m_reset = BGFX_RESET_VSYNC;
 
 		bgfx::init(args.m_type, args.m_pciId);
 		bgfx::reset(m_width, m_height, m_reset);
@@ -43,11 +44,11 @@ public:
 		// Enable debug text.
 		bgfx::setDebug(m_debug);
 
-		u_time = bgfx::createUniform("u_time", bgfx::UniformType::Vec4);
+		m_timeOffset = bx::getHPCounter();
 
 		ambergris_fbx::FbxImportManager fbxManager;
 
-		char filePath[] = "C:\\Users\\hustztz\\Documents\\3dsMax\\export\\test2.FBX";
+		char filePath[] = "C:\\Users\\hustztz\\Documents\\3dsMax\\export\\kaiguanxiang.FBX";
 		if (!fbxManager.Load(filePath))
 		{
 			//std::cout << "An error occurred while loading the scene..." << std::endl;
@@ -63,9 +64,11 @@ public:
 		if (!fbxManager.ParseScene())
 			return;
 
-		AgRenderer& renderer = Singleton<AgRenderer>::instance();
-		renderer.init(entry::getFileReader() );
-		if (!AgRenderSceneBridge(renderer, sceneDB))
+		Singleton<AgRenderer>::instance().m_pipeline.reset();
+		// TODO
+		entry::setCurrentDir("runtime/");
+		Singleton<AgRenderResourceManager>::instance().init(entry::getFileReader() );
+		if (!AgRenderSceneBridge(Singleton<AgRenderer>::instance(), sceneDB))
 			assert(false);
 
 		m_timeOffset = bx::getHPCounter();
@@ -127,9 +130,8 @@ public:
 		cameraDestroy();
 		imguiDestroy();
 
-		Singleton<AgRenderer>::instance().destroy();
-
-		bgfx::destroy(u_time);
+		Singleton<AgRenderer>::instance().m_pipeline.reset();
+		Singleton<AgRenderResourceManager>::instance().destroy();
 
 		// Shutdown bgfx.
 		bgfx::shutdown();
@@ -173,15 +175,7 @@ public:
 
 			imguiEndFrame();
 
-			// Set view 0 default viewport.
-			bgfx::setViewRect(0, 0, 0, uint16_t(m_width), uint16_t(m_height) );
-
-			// This dummy draw call is here to make sure that view 0 is cleared
-			// if no other draw calls are submitted to view 0.
-			bgfx::touch(0);
-
 			float time = (float)( (bx::getHPCounter()-m_timeOffset)/double(bx::getHPFrequency() ) );
-			bgfx::setUniform(u_time, &time);
 
 			// Set view and projection matrix for view 0.
 			const bgfx::HMD* hmd = bgfx::getHMD();
@@ -206,8 +200,21 @@ public:
 				bx::mtxProj(proj, 60.0f, float(m_width) / float(m_height), 0.1f, 10000.0f, true);// bgfx::getCaps()->homogeneousDepth);
 				bgfx::setViewTransform(0, view, proj);
 
-				// Set view 0 default viewport.
-				bgfx::setViewRect(0, 0, 0, uint16_t(m_width), uint16_t(m_height) );
+				if (m_mouseState.m_buttons[entry::MouseButton::Left])
+				{
+					// Set up picking pass
+					float viewProj[16];
+					bx::mtxMul(viewProj, view, proj);
+
+					float invViewProj[16];
+					bx::mtxInverse(invViewProj, viewProj);
+
+					// Mouse coord in NDC
+					float mouseXNDC = (m_mouseState.m_mx / (float)m_width) * 2.0f - 1.0f;
+					float mouseYNDC = ((m_height - m_mouseState.m_my) / (float)m_height) * 2.0f - 1.0f;
+
+					Singleton<AgRenderer>::instance().m_pipeline.updatePickingInfo(invViewProj, mouseXNDC, mouseYNDC);
+				}
 			}
 
 			int64_t now = bx::getHPCounter();
@@ -221,12 +228,7 @@ public:
 				// Update camera.
 				cameraUpdate(deltaTime, m_mouseState);
 			}
-
-			Singleton<AgRenderer>::instance().draw();
-
-			// Advance to next frame. Rendering thread will be kicked to
-			// process submitted rendering primitives.
-			bgfx::frame();
+			Singleton<AgRenderer>::instance().m_pipeline.run();
 
 			return true;
 		}
@@ -240,9 +242,7 @@ public:
 	uint32_t m_height;
 	uint32_t m_debug;
 	uint32_t m_reset;
-
 	int64_t m_timeOffset;
-	bgfx::UniformHandle u_time;
 };
 
 } // namespace

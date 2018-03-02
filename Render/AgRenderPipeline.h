@@ -1,41 +1,33 @@
 #pragma once
-#include "AgRenderNode.h"
 
-#include <memory>
+#include "AgRenderQueue.h"
+#include "AgRenderPass.h"
 
 namespace ambergris {
 
+	class AgHardwarePickingSystem;
+
 	class AgRenderPipeline
 	{
-		struct AgRenderQueue
-		{
-			void clear();
-			void appendNode(std::shared_ptr<AgRenderNode> renderNode);
-
-			typedef stl::vector<std::shared_ptr<AgRenderNode>> RenderNodeArray;
-			RenderNodeArray m_renderNodes;
-		};
 	public:
-		enum Stage
-		{
-			E_STATIC_SCENE_OPAQUE = 0,
-			E_STATIC_SCENE_TRANSPARENT,
-			E_UI_OPAQUE,
-
-			E_COUNT
-		};
+		
+		
+		void reset();
+		void run();
+		void updatePickingInfo(float* invViewProj, float mouseXNDC, float mouseYNDC);
+		AgRenderNode::Handle appendNode(AgRenderNode* renderNode);
 	protected:
 		AgRenderPipeline();
 		~AgRenderPipeline();
-		friend class AgRenderer;
-
-		void appendNode(Stage stage, std::shared_ptr<AgRenderNode> renderNode);
-		void draw(bgfx::ViewId view) const;
-		void clear(int stage);
-		void reset();
+		friend struct AgRenderer;
 	private:
-	private:
-		AgRenderQueue m_queues[E_COUNT];
+		bool			m_occusion_cull;
+		bool			m_pick_drawed;
+		uint32_t		m_pick_reading;
+		uint32_t		m_currFrame;
+		bgfx::ViewId    m_viewId[AgRenderPass::E_PASS_COUNT];
+		AgHardwarePickingSystem*	m_pPicking;
+		AgRenderQueueManager	m_renderQueueManager;
 	};
 
 }

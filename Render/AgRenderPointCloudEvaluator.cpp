@@ -1,6 +1,6 @@
 #include "AgRenderPointCloudEvaluator.h"
 #include "AgRenderer.h"
-#include "Resource\AgGeometryResourceManager.h"
+#include "Resource\AgRenderResourceManager.h"
 #include "Scene/AgSceneDatabase.h"
 
 namespace ambergris {

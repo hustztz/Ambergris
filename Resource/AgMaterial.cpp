@@ -1,48 +1,15 @@
 #include "AgMaterial.h"
+#include "Resource/AgRenderResourceManager.h"
 
 namespace ambergris {
 
-	bgfx::ProgramHandle AgMaterial::getProgramHandle() const
-	{
-		const AgShader* shader = Singleton<AgShaderManager>::instance().get(m_shader);
-		if (!shader)
-			return BGFX_INVALID_HANDLE;
-
-		return shader->m_program;
-	}
-
-	uint8_t	AgMaterial::getTextureSlotSize() const
-	{
-		const AgShader* shader = Singleton<AgShaderManager>::instance().get(m_shader);
-		if (!shader)
-			return 0;
-
-		return shader->m_texture_slot_count;
-	}
-
-	const AgShader::TextureSlot* AgMaterial::getTextureSlot(uint8_t slot) const
-	{
-		const AgShader* shader = Singleton<AgShaderManager>::instance().get(m_shader);
-		if (!shader)
-			return nullptr;
-
-		if (slot >= shader->m_texture_slot_count)
-			return nullptr;
-
-		return &shader->m_texture_slots[slot];
-	}
-
 	void AgMaterialManager::destroy()
 	{
-		Singleton<AgShaderManager>::instance().unloadShader();
+		
 	}
 
-	void AgMaterialManager::init(bx::FileReaderI* _reader)
+	void AgMaterialManager::init()
 	{
-		// Create program from shaders.
-		if (!Singleton<AgShaderManager>::instance().loadShader(_reader))
-			return;
-
 		for (int id = 0; id < AgMaterial::E_COUNT; id++)
 		{
 			AgMaterial* mat = get(id);

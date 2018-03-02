@@ -1,4 +1,6 @@
 #include "AgRenderInstanceNode.h"
+#include "Resource/AgRenderResourceManager.h"
+#include "AgRenderPass.h"
 
 #include <assert.h>
 
@@ -13,6 +15,7 @@ namespace ambergris {
 	/*virtual*/
 	bool AgRenderInstanceNode::appendGeometry(
 		const float* transform,
+		const uint32_t* pick_id,
 		const bgfx::VertexDecl& decl,
 		const uint8_t* vertBuf, uint32_t vertSize,
 		const uint16_t* indexBuf, uint32_t indexSize)
@@ -23,6 +26,7 @@ namespace ambergris {
 
 		return AgRenderNode::appendGeometry(
 			nullptr,
+			nullptr,//TODO
 			decl,
 			vertBuf, vertSize,
 			indexBuf, indexSize);
@@ -62,19 +66,48 @@ namespace ambergris {
 	}
 
 	/*virtual*/
-	void AgRenderInstanceNode::draw(bgfx::ViewId view) const
+	void AgRenderInstanceNode::draw(bgfx::ViewId view,
+		AgShader::Handle shaderHandle,
+		uint64_t state,
+		bool inOcclusionQuery /*= false*/,
+		bool needOcclusionCondition /*= false*/)
 	{
 		if (m_items.empty())
 			return;
-		const AgMaterial* mat = Singleton<AgMaterialManager>::instance().get(m_material_handle);
-		if (!mat)
+
+		const AgShader* shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(shaderHandle + AgShader::SHADER_INSTANCE_OFFSET);
+		if (!shader)
 			return;
-		uint64_t state = mat->m_state_flags;
-		bgfx::ProgramHandle progHandle = mat->getProgramHandle();
+
+		_SubmitTexture(shader);
+
+		// Update Uniforms
+		if (AgRenderPass::E_PASS_ID == view)
+		{
+			// Submit ID pass based on mesh ID
+			float idsF[4];
+			idsF[0] = m_items[0].m_pick_id[0] / 255.0f;
+			idsF[1] = m_items[0].m_pick_id[1] / 255.0f;
+			idsF[2] = m_items[0].m_pick_id[2] / 255.0f;
+			idsF[3] = 1.0f;
+			bgfx::setUniform(shader->m_uniforms[0].uniform_handle, idsF);
+		}
+		else
+		{
+			for (uint8_t i = 0; i < AgShader::MAX_UNIFORM_COUNT; ++i)
+			{
+				if (!bgfx::isValid(shader->m_uniforms[i].uniform_handle) || !m_items[0].m_uniformData[i].dirty)
+					continue;
+				bgfx::setUniform(shader->m_uniforms[i].uniform_handle, m_items[0].m_uniformData[i].data);
+				m_items[0].m_uniformData[i].dirty = false;
+			}
+		}
+		
 		bgfx::setState(state);
-		m_items[0].submitBuffers();
+		m_items[0].submit();
 		// Set instance data buffer.
 		bgfx::setInstanceDataBuffer(&m_instance_db);
-		bgfx::submit(view, progHandle);
+		bgfx::submit(view, shader->m_program);
 	}
+
 }

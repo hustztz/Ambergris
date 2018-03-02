@@ -1,9 +1,7 @@
 #include "FbxImportManager.h"
 #include "FbxUtils.h"
 #include "Scene\AgSceneDatabase.h"
-#include "Resource\AgGeometryResourceManager.h"
-#include "Resource\AgTexture.h"
-#include "Resource\AgMaterial.h"
+#include "Resource\AgRenderResourceManager.h"
 
 #include "BGFX/entry/entry.h"//TODO
 
@@ -359,6 +357,8 @@ namespace ambergris_fbx {
 				fbxMesh.m_bAllByControlPoint = false;
 			}
 		}
+
+		FbxStringList lUVNames;
 		const char * lUVName = NULL;
 		if (hasUV)
 		{
@@ -372,7 +372,6 @@ namespace ambergris_fbx {
 				fbxMesh.m_bAllByControlPoint = false;
 			}
 
-			FbxStringList lUVNames;
 			pMesh->GetUVSetNames(lUVNames);
 			if (hasUV && lUVNames.GetCount())
 			{
@@ -667,8 +666,8 @@ namespace ambergris_fbx {
 		// To ag database
 		if (subMeshes.empty())
 		{
-			AgVertexBuffer* vb = Singleton<AgGeometryResourceManager>::instance().m_vertex_buffer_pool.allocate<AgVertexBuffer>(entry::getAllocator());
-			AgIndexBuffer* ib = Singleton<AgGeometryResourceManager>::instance().m_index_buffer_pool.allocate<AgIndexBuffer>(entry::getAllocator());
+			AgVertexBuffer* vb = Singleton<AgRenderResourceManager>::instance().m_vertex_buffer_pool.allocate<AgVertexBuffer>(entry::getAllocator());
+			AgIndexBuffer* ib = Singleton<AgRenderResourceManager>::instance().m_index_buffer_pool.allocate<AgIndexBuffer>(entry::getAllocator());
 			if (vb && ib)
 			{
 				ib->m_bAllByControlPoint = fbxMesh.m_bAllByControlPoint;
@@ -692,8 +691,8 @@ namespace ambergris_fbx {
 				if(0 == nSubMeshPolyCount)
 					continue;
 
-				AgVertexBuffer* vb = Singleton<AgGeometryResourceManager>::instance().m_vertex_buffer_pool.allocate<AgVertexBuffer>(entry::getAllocator());
-				AgIndexBuffer* ib = Singleton<AgGeometryResourceManager>::instance().m_index_buffer_pool.allocate<AgIndexBuffer>(entry::getAllocator());
+				AgVertexBuffer* vb = Singleton<AgRenderResourceManager>::instance().m_vertex_buffer_pool.allocate<AgVertexBuffer>(entry::getAllocator());
+				AgIndexBuffer* ib = Singleton<AgRenderResourceManager>::instance().m_index_buffer_pool.allocate<AgIndexBuffer>(entry::getAllocator());
 				if (!vb || !ib)
 					break;
 
@@ -734,15 +733,8 @@ namespace ambergris_fbx {
 				AgMesh::Geometry scene_geom;
 				scene_geom.vertex_buffer_handle = vb->m_handle;
 				scene_geom.index_buffer_handle = ib->m_handle;
-				switch (sub_mesh.m_material_index)
-				{
-				case 1:
-					scene_geom.material_handle = AgMaterial::E_LAMBERT;
-					break;
-				default:
-					scene_geom.material_handle = AgMaterial::E_LAMBERT;
-					break;
-				}
+				const FbxSurfaceMaterial * lMaterial = pMesh->GetNode()->GetMaterial(sub_mesh.m_material_index);
+				_ParseMaterial(&scene_geom, lMaterial);
 				renderNode.m_geometries.push_back(scene_geom);
 			}
 		}
@@ -830,6 +822,94 @@ namespace ambergris_fbx {
 		}
 		
 		return;
+	}
+
+	FbxDouble3 FbxImportManager::_GetMaterialProperty(
+		AgMesh::Geometry* output,
+		const FbxSurfaceMaterial * pMaterial,
+		const char * pPropertyName,
+		const char * pFactorPropertyName)
+	{
+		FbxDouble3 lResult(0, 0, 0);
+		const FbxProperty lProperty = pMaterial->FindProperty(pPropertyName);
+		const FbxProperty lFactorProperty = pMaterial->FindProperty(pFactorPropertyName);
+		if (lProperty.IsValid() && lFactorProperty.IsValid())
+		{
+			lResult = lProperty.Get<FbxDouble3>();
+			double lFactor = lFactorProperty.Get<FbxDouble>();
+			if (lFactor != 1)
+			{
+				lResult[0] *= lFactor;
+				lResult[1] *= lFactor;
+				lResult[2] *= lFactor;
+			}
+		}
+
+		if (lProperty.IsValid())
+		{
+			const int n_textures = lProperty.GetSrcObjectCount<FbxFileTexture>();
+			for (int i = 0; i < n_textures; i++)
+			{
+				const FbxFileTexture* lTexture = lProperty.GetSrcObject<FbxFileTexture>(i);
+				if (lTexture)
+				{
+					// TODO
+					entry::setCurrentDir("");
+					output->texture_handle[i] =
+						Singleton<AgRenderResourceManager>::instance().m_textures.append(entry::getAllocator(), entry::getFileReader(), lTexture->GetFileName(), 0);
+				}
+			}
+		}
+
+		return lResult;
+	}
+
+	void FbxImportManager::_ParseMaterial(AgMesh::Geometry* output, const FbxSurfaceMaterial * pMaterial)
+	{
+		if (!output || !pMaterial)
+			return;
+
+		const FbxString& shadingModel = pMaterial->ShadingModel.Get();
+		if (shadingModel == "")
+		{
+			output->material_handle = AgMaterial::E_LAMBERT;
+		}
+		else
+		{
+			output->material_handle = AgMaterial::E_LAMBERT;
+		}
+
+		Material mat;
+		const FbxDouble3 lEmissive = _GetMaterialProperty(output, pMaterial,
+			FbxSurfaceMaterial::sEmissive, FbxSurfaceMaterial::sEmissiveFactor);
+		mat.mEmissive.mColor[0] = static_cast<float>(lEmissive[0]);
+		mat.mEmissive.mColor[1] = static_cast<float>(lEmissive[1]);
+		mat.mEmissive.mColor[2] = static_cast<float>(lEmissive[2]);
+
+		const FbxDouble3 lAmbient = _GetMaterialProperty(output, pMaterial,
+			FbxSurfaceMaterial::sAmbient, FbxSurfaceMaterial::sAmbientFactor);
+		mat.mAmbient.mColor[0] = static_cast<float>(lAmbient[0]);
+		mat.mAmbient.mColor[1] = static_cast<float>(lAmbient[1]);
+		mat.mAmbient.mColor[2] = static_cast<float>(lAmbient[2]);
+
+		const FbxDouble3 lDiffuse = _GetMaterialProperty(output, pMaterial,
+			FbxSurfaceMaterial::sDiffuse, FbxSurfaceMaterial::sDiffuseFactor);
+		mat.mDiffuse.mColor[0] = static_cast<float>(lDiffuse[0]);
+		mat.mDiffuse.mColor[1] = static_cast<float>(lDiffuse[1]);
+		mat.mDiffuse.mColor[2] = static_cast<float>(lDiffuse[2]);
+
+		const FbxDouble3 lSpecular = _GetMaterialProperty(output, pMaterial,
+			FbxSurfaceMaterial::sSpecular, FbxSurfaceMaterial::sSpecularFactor);
+		mat.mSpecular.mColor[0] = static_cast<float>(lSpecular[0]);
+		mat.mSpecular.mColor[1] = static_cast<float>(lSpecular[1]);
+		mat.mSpecular.mColor[2] = static_cast<float>(lSpecular[2]);
+
+		FbxProperty lShininessProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sShininess);
+		if (lShininessProperty.IsValid())
+		{
+			double lShininess = lShininessProperty.Get<FbxDouble>();
+			mat.mShinness = static_cast<float>(lShininess);
+		}
 	}
 
 	void FbxImportManager::_ParseTexture(FbxScene *pScene)

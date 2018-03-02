@@ -4,12 +4,8 @@
 #include <functional>
 #include <map>
 
-#include "Resource/AgResource.h"
+#include "Scene/AgMesh.h"
 #include "Scene/AgSceneImportOptions.h"
-
-namespace ambergris {
-	struct AgMesh;
-}
 
 namespace ambergris_fbx {
 
@@ -31,7 +27,33 @@ namespace ambergris_fbx {
 		double GetUnitScale() const;
 		int	GetUpAxis();
 	protected:
+		struct Material
+		{
+			struct ColorChannel
+			{
+				ColorChannel()
+				{
+					mColor[0] = 0.0f;
+					mColor[1] = 0.0f;
+					mColor[2] = 0.0f;
+					mColor[3] = 1.0f;
+				}
+
+				std::string mTexturePath;
+				float mColor[4];
+			};
+			ColorChannel mEmissive;
+			ColorChannel mAmbient;
+			ColorChannel mDiffuse;
+			ColorChannel mSpecular;
+			float mShinness;
+		};
 		void _ImportSceneInfo(FbxScene *fbx_scene);
+		FbxDouble3 _GetMaterialProperty(ambergris::AgMesh::Geometry* output,
+			const FbxSurfaceMaterial * pMaterial,
+			const char * pPropertyName,
+			const char * pFactorPropertyName);
+		void _ParseMaterial(ambergris::AgMesh::Geometry* output, const FbxSurfaceMaterial * pMaterial);
 		void _ParseTexture(FbxScene *fbx_scene);
 		void _ExtractMesh(ambergris::AgMesh& renderNode, FbxMesh *pMesh);
 		void _ParseMesh(FbxNode* node);

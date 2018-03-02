@@ -1,18 +1,11 @@
 #include "AgShader.h"
 #include "AgShaderUtils.h"
+#include "AgRenderResourceManager.h"
 
 #include <bx/readerwriter.h>
 
 
 namespace ambergris {
-
-	AgShaderManager::AgShaderManager()
-	{
-	}
-
-	AgShaderManager::~AgShaderManager()
-	{
-	}
 
 	bool AgShaderManager::loadShader(bx::FileReaderI* _reader)
 	{
@@ -43,6 +36,17 @@ namespace ambergris {
 				shader->m_program = shaderUtils::loadProgram(_reader, "vs_instancing", "fs_instancing");
 				ret &= bgfx::isValid(shader->m_program);
 				break;
+			case AgShader::E_PICKING_SHADER:
+				shader->m_program = shaderUtils::loadProgram(_reader, "vs_picking", "fs_picking_id");
+				if (bgfx::isValid(shader->m_program))
+				{
+					shader->m_uniforms[0].uniform_handle = bgfx::createUniform("u_id", bgfx::UniformType::Vec4); // ID for drawing into ID buffer
+				}
+				else
+				{
+					ret &= false;
+				}
+				break;
 			default:
 				break;
 			}
@@ -66,11 +70,11 @@ namespace ambergris {
 			}
 			for (uint8_t i = 0; i < AgShader::MAX_UNIFORM_COUNT; i++)
 			{
-				if (bgfx::isValid(shader->m_uniforms[i]))
+				if (bgfx::isValid(shader->m_uniforms[i].uniform_handle))
 				{
-					bgfx::destroy(shader->m_uniforms[i]);
+					bgfx::destroy(shader->m_uniforms[i].uniform_handle);
 				}
-				shader->m_uniforms[i] = BGFX_INVALID_HANDLE;
+				shader->m_uniforms[i].uniform_handle = BGFX_INVALID_HANDLE;
 			}
 			for (uint8_t i = 0; i < AgShader::MAX_TEXTURE_SLOT_COUNT; i++)
 			{
@@ -82,4 +86,5 @@ namespace ambergris {
 			}
 		}
 	}
+
 }

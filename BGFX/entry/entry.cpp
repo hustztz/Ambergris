@@ -619,8 +619,6 @@ restart:
 #endif // 0
 		}
 
-		setCurrentDir("runtime/");
-
 		int32_t result = bx::kExitSuccess;
 		s_restartArgs[0] = '\0';
 		if (0 == s_numApps)

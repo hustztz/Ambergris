@@ -224,6 +224,9 @@ namespace ambergris_fbx {
 			}
 		}
 
+		bool bEmbedded = IOS_REF.GetBoolProp(EXP_FBX_EMBEDDED, false);
+		const char* embeddedPath = lImporter->GetEmbeddingExtractionFolder();
+
 		// Destroy the importer.
 		lImporter->Destroy();
 

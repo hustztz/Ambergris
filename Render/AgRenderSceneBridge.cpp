@@ -5,6 +5,8 @@
 #include "AgRenderer.h"
 #include "Scene/AgSceneDatabase.h"
 
+#include <memory>
+
 namespace ambergris {
 
 	bool AgRenderSceneBridge(AgRenderer& renderer, const AgSceneDatabase& sceneDB)
@@ -44,8 +46,8 @@ namespace ambergris {
 						{
 							if (eva_node_arr[i].m_geometry == mesh->m_geometries[subMeshId])
 							{
-								std::shared_ptr<AgRenderInstanceNode> inst_node =
-									std::dynamic_pointer_cast<AgRenderInstanceNode>(eva_node_arr[i].m_renderNode);
+								AgRenderInstanceNode* inst_node =
+									dynamic_cast<AgRenderInstanceNode*>(eva_node_arr[i].m_pRenderNode);
 								if (inst_node)
 									ret &= inst_node->appendInstance(instanceData, stride);
 							}
@@ -62,9 +64,15 @@ namespace ambergris {
 
 		for (int i = 0; i < eva_node_arr.size(); ++i)
 		{
-			std::shared_ptr<AgRenderNode> renderNode = eva_node_arr[i].m_renderNode;
-			if(renderNode && renderNode->prepare())
-				renderer.appendNode(renderNode);
+			AgRenderNode* pNode = eva_node_arr[i].m_pRenderNode;
+			if (pNode && pNode->prepare())
+			{
+				renderer.m_pipeline.appendNode(pNode);
+			}
+			else if (pNode)
+			{
+				delete pNode;
+			}
 		}
 		return ret;
 	}

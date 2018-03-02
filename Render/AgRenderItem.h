@@ -1,12 +1,20 @@
 #pragma once
 
 #include "Resource/AgTexture.h"
-#include <bgfx/bgfx.h>
+#include "Resource/AgShader.h"
 
 namespace ambergris {
 
 	class AgRenderItem
 	{
+	public:
+		struct UniformData
+		{
+			UniformData() : data(nullptr), dirty(false) {}
+			bgfx::UniformType::Enum type;
+			void*					data;
+			bool					dirty;
+		};
 	public:
 		AgRenderItem();
 		AgRenderItem(
@@ -18,18 +26,27 @@ namespace ambergris {
 		}
 
 		void setTransform(const float* mtx);
+		void setPickID(const uint32_t* id);
 
 		void destroyBuffers();
-		void submitBuffers() const;
-		const float* getTransform() const { return m_mtx; }
+		void submit() const;
+
+		void enableOcclusionQuery();
+		void disableOcclusionQuery();
 	protected:
 		void _ResetTransform();
 		void _SetVertexBuffer(const bgfx::VertexDecl& decl, const uint8_t* buffer, uint32_t size);
 		void _SetIndexBuffer(const uint16_t* buffer, uint32_t size);
 
 	private:
+		friend class AgRenderNode;
+		friend class AgRenderInstanceNode;
+
+		bgfx::OcclusionQueryHandle	m_oqh;
 		bgfx::VertexBufferHandle	m_vbh;
 		bgfx::IndexBufferHandle		m_ibh;
 		float						m_mtx[16];
+		uint32_t					m_pick_id[3];
+		UniformData					m_uniformData[AgShader::MAX_UNIFORM_COUNT];
 	};
 }

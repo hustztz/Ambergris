@@ -2,29 +2,33 @@
 #include "AgRenderItem.h"
 #include "Resource/AgMaterial.h"
 
-#include <tinystl/allocator.h>
-#include <tinystl/vector.h>
-namespace stl = tinystl;
-
 namespace ambergris {
 
-	class AgRenderNode
+	class AgRenderNode : public AgResource
 	{
 	public:
 		AgRenderNode()
-			: m_material_handle(AgMaterial::MaterialType::E_LAMBERT)
+			: AgResource()
+			, m_material_handle(AgMaterial::MaterialType::E_LAMBERT)
 		{
 			destroy();
 		}
 		virtual ~AgRenderNode()
 		{
+			destroy();
 		}
 
 		virtual void destroy();
 		virtual bool prepare() { return true; }
-		virtual void draw(bgfx::ViewId view) const;
+		virtual void draw(bgfx::ViewId view, bool inOcclusionQuery = false);
+		virtual void draw(bgfx::ViewId view,
+			AgShader::Handle shaderHandle,
+			uint64_t state,
+			bool inOcclusionQuery = false,
+			bool needOcclusionCondition = false);
 		virtual bool appendGeometry(
 			const float* transform,
+			const uint32_t* pick_id,
 			const bgfx::VertexDecl& decl,
 			const uint8_t* vertBuf, uint32_t vertSize,
 			const uint16_t* indexBuf, uint32_t indexSize);
@@ -33,9 +37,16 @@ namespace ambergris {
 		AgMaterial::Handle getMaterial() const { return m_material_handle; }
 		void setTexture(uint8_t slot, AgTexture::Handle tex_handle);
 	protected:
+		void _SubmitTexture(const AgShader* shader);
+	protected:
+		struct TextureData
+		{
+			AgTexture::Handle	handle;
+			bool				dirty;
+		};
+		TextureData			m_texture[AgShader::MAX_TEXTURE_SLOT_COUNT];
 		bgfx::VertexDecl	m_decl;
 		AgMaterial::Handle	m_material_handle;
-		AgTexture::Handle	m_texture[AgShader::MAX_TEXTURE_SLOT_COUNT];
 		typedef stl::vector<AgRenderItem> RenderItemArray;
 		RenderItemArray		m_items;
 	};

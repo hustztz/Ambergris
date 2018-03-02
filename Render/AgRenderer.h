@@ -2,28 +2,19 @@
 
 #include "Foundation/Singleton.h"
 #include "AgRenderPipeline.h"
-
-namespace bx {
-	struct FileReaderI;
-}
+#include "AgRenderQueue.h"
 
 namespace ambergris {
 
-	class AgRenderer
+	struct AgRenderer
 	{
 	public:
-		void init(bx::FileReaderI* _reader);
-		void destroy();
-		void reset();
-		void appendNode(std::shared_ptr<AgRenderNode> renderNode);
 		void draw();
-	protected:
 	private:
 		AgRenderer();
 		~AgRenderer();
 		friend class Singleton<AgRenderer>;
-	private:
+	public:
 		AgRenderPipeline m_pipeline;
-		bgfx::ViewId       m_viewId;
 	};
 }

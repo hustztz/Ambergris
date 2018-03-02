@@ -1,8 +1,10 @@
 #pragma once
 #include "AgRenderSceneBridge.h"
 #include "AgRenderNode.h"
-#include "Resource\AgGeometryResourceManager.h"
+#include "Resource\AgRenderResourceManager.h"
 #include "Scene\AgMesh.h"
+
+#include "BGFX/entry/entry.h" //TODO
 
 namespace ambergris {
 
@@ -21,12 +23,12 @@ namespace ambergris {
 
 			for (int i = 0; i < nSubMeshNum; i ++)
 			{
-				const AgVertexBuffer* vb = Singleton<AgGeometryResourceManager>::instance().m_vertex_buffer_pool.get(geomNode.m_geometries[i].vertex_buffer_handle);
-				const AgIndexBuffer* ib = Singleton<AgGeometryResourceManager>::instance().m_index_buffer_pool.get(geomNode.m_geometries[i].index_buffer_handle);
+				const AgVertexBuffer* vb = Singleton<AgRenderResourceManager>::instance().m_vertex_buffer_pool.get(geomNode.m_geometries[i].vertex_buffer_handle);
+				const AgIndexBuffer* ib = Singleton<AgRenderResourceManager>::instance().m_index_buffer_pool.get(geomNode.m_geometries[i].index_buffer_handle);
 				if (!vb || !ib)
 					continue;
 
-				std::shared_ptr<T> renderNode(new T());
+				T* renderNode = BX_NEW(entry::getAllocator(), T);
 				renderNode->setMaterial(geomNode.m_geometries[i].material_handle);
 				for (uint8_t tex_stage = 0; tex_stage < AgShader::MAX_TEXTURE_SLOT_COUNT; tex_stage ++)
 				{
@@ -37,6 +39,7 @@ namespace ambergris {
 				}
 				if (!renderNode->appendGeometry(
 					geomNode.m_global_transform,
+					geomNode.m_pick_id,
 					vb->m_decl,
 					vb->m_vertex_buffer.GetData(), vb->m_vertex_buffer.GetSize() * sizeof(uint8_t),
 					ib->m_index_buffer.GetData(), ib->m_index_buffer.GetSize() * sizeof(uint16_t)))

@@ -1,2 +1,4 @@
 ..\tools\shadercRelease.exe -f vs_lambert.sc -o ..\runtime\shaders\dx11\vs_lambert.bin --depends -i common --varyingdef varying.def.sc --platform windows -p vs_4_0 -O 3 --type vertex -O3
 ..\tools\shadercRelease.exe -f fs_lambert.sc -o ..\runtime\shaders\dx11\fs_lambert.bin --depends -i common --varyingdef varying.def.sc --platform windows -p ps_4_0 -O 3 --type fragment -O3
+..\tools\shadercRelease.exe -f vs_picking.sc -o ..\runtime\shaders\dx11\vs_picking.bin --depends -i common --varyingdef varying.def.sc --platform windows -p vs_4_0 -O 3 --type vertex -O3
+..\tools\shadercRelease.exe -f fs_picking_id.sc -o ..\runtime\shaders\dx11\fs_picking_id.bin --depends -i common --varyingdef varying.def.sc --platform windows -p ps_4_0 -O 3 --type fragment -O3

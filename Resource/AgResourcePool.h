@@ -56,7 +56,7 @@ namespace ambergris {
 				return const_cast<T*>(m_resource_arr[id]);
 			return nullptr;
 		}
-	private:
+	protected:
 		typedef stl::vector<T*> Resources;
 		Resources		m_resource_arr;
 	};

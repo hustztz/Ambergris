@@ -7,6 +7,7 @@ namespace ambergris {
 	AgRenderItem::AgRenderItem()
 		: m_vbh(BGFX_INVALID_HANDLE)
 		, m_ibh(BGFX_INVALID_HANDLE)
+		, m_oqh(BGFX_INVALID_HANDLE)
 	{
 	}
 
@@ -14,6 +15,7 @@ namespace ambergris {
 		const bgfx::VertexDecl& decl,
 		const uint8_t* vertBuf, uint32_t vertSize,
 		const uint16_t* indexBuf, uint32_t indexSize)
+		: m_oqh(BGFX_INVALID_HANDLE)
 	{
 		_ResetTransform();
 		_SetVertexBuffer(decl, vertBuf, vertSize);
@@ -22,6 +24,7 @@ namespace ambergris {
 
 	void AgRenderItem::destroyBuffers()
 	{
+		disableOcclusionQuery();
 		if (bgfx::isValid(m_vbh))
 		{
 			bgfx::destroy(m_vbh);
@@ -56,7 +59,7 @@ namespace ambergris {
 		m_ibh = bgfx::createIndexBuffer(mem);
 	}
 
-	void AgRenderItem::submitBuffers() const
+	void AgRenderItem::submit() const
 	{
 		bgfx::setTransform(m_mtx);
 		bgfx::setIndexBuffer(m_ibh);
@@ -73,6 +76,14 @@ namespace ambergris {
 		}
 	}
 
+	void AgRenderItem::setPickID(const uint32_t* id)
+	{
+		if (!id)
+			return;
+
+		memcpy_s(m_pick_id, sizeof(uint32_t)*3, id, sizeof(uint32_t) * 3);
+	}
+
 	void AgRenderItem::_ResetTransform()
 	{
 		m_mtx[0] = m_mtx[5] = m_mtx[9] = m_mtx[15] = 1.0f;
@@ -80,4 +91,20 @@ namespace ambergris {
 			m_mtx[6] = m_mtx[7] = m_mtx[8] = m_mtx[10] =
 			m_mtx[11] = m_mtx[12] = m_mtx[13] = m_mtx[14] = 0.0f;
 	}
+
+
+	void AgRenderItem::enableOcclusionQuery()
+	{
+		m_oqh = bgfx::createOcclusionQuery();
+	}
+
+	void AgRenderItem::disableOcclusionQuery()
+	{
+		if (bgfx::isValid(m_oqh))
+		{
+			bgfx::destroy(m_oqh);
+			m_oqh = BGFX_INVALID_HANDLE;
+		}
+	}
+
 }

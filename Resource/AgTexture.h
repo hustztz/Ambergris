@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Foundation/Singleton.h"
 #include "AgResourcePool.h"
 
 #include <bgfx/bgfx.h>
@@ -27,13 +26,17 @@ namespace ambergris {
 	class AgTextureManager : public AgResourcePool<AgTexture>
 	{
 	public:
-		AgResource::Handle append(bx::AllocatorI* allocator, bx::FileReaderI* _reader, const char* _name, uint32_t _flags);
+		AgTexture::Handle append(bx::AllocatorI* allocator, bx::FileReaderI* _reader, const char* _name, uint32_t _flags);
+		AgTexture::Handle append(uint16_t _width
+			, uint16_t _height
+			, uint16_t _depth
+			, bool     _hasMips
+			, uint16_t _numLayers
+			, bgfx::TextureFormat::Enum _format
+			, uint32_t _flags);
 		virtual void destroy() override;
 	protected:
 	private:
-		AgTextureManager() {};
-		~AgTextureManager() {};
-		friend class Singleton<AgTextureManager>;
 		friend class AgRenderNode;
 	};
 }

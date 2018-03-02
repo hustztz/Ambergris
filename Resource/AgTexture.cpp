@@ -3,6 +3,8 @@
 
 #include <bx/macros.h>
 #include <bimg/decode.h>
+#include "BGFX/entry/dbg.h" // TODO
+#include "BGFX/entry/entry.h" // TODO
 
 namespace ambergris {
 
@@ -29,7 +31,7 @@ namespace ambergris {
 		bimg::imageFree(imageContainer);
 	}
 
-	AgResource::Handle AgTextureManager::append(bx::AllocatorI* allocator, bx::FileReaderI* _reader, const char* _name, uint32_t _flags)
+	AgTexture::Handle AgTextureManager::append(bx::AllocatorI* allocator, bx::FileReaderI* _reader, const char* _name, uint32_t _flags)
 	{
 		uint32_t size;
 		void* data = fileUtils::load(_reader, allocator, _name, &size);
@@ -39,6 +41,15 @@ namespace ambergris {
 		bimg::ImageContainer* imageContainer = bimg::imageParse(allocator, data, size);
 		if (NULL == imageContainer)
 			return AgResource::kInvalidHandle;
+
+		if ((NULL != bx::strFindI(_name, ".dds")) && (NULL != bx::strFindI(_name, ".ktx")))
+		{
+			DBG("Convert texture: %s", _name);
+			bimg::TextureFormat::Enum outputFormat = imageContainer->m_format;
+			bimg::ImageContainer* output = bimg::imageConvert(allocator, outputFormat, *imageContainer);
+			bimg::imageFree(imageContainer);
+			imageContainer = output;
+		}
 		
 		const bgfx::Memory* mem = bgfx::makeRef(
 			imageContainer->m_data
@@ -104,5 +115,39 @@ namespace ambergris {
 		tex->m_tex_handle = handle;
 
 		return tex->m_handle;
+	}
+
+	AgTexture::Handle AgTextureManager::append(uint16_t _width
+		, uint16_t _height
+		, uint16_t _depth
+		, bool     _hasMips
+		, uint16_t _numLayers
+		, bgfx::TextureFormat::Enum _format
+		, uint32_t _flags)
+	{
+		bgfx::TextureHandle handle = BGFX_INVALID_HANDLE;
+		if (0 == _depth && 0 == _height)
+		{
+			handle = bgfx::createTextureCube(_width, _hasMips, _numLayers, _format, _flags);
+		}
+		else if(0 == _depth)
+		{
+			handle = bgfx::createTexture2D(_width, _height, _hasMips, _numLayers, _format, _flags);
+		}
+		else
+		{
+			handle = bgfx::createTexture3D(_width, _height, _depth, _hasMips, _format, _flags);
+		}
+
+		if (bgfx::isValid(handle))
+		{
+			AgTexture* tex = AgResourcePool<AgTexture>::allocate<AgTexture>(entry::getAllocator());
+			if (!tex)
+				return AgResource::kInvalidHandle;
+			tex->m_tex_handle = handle;
+			return tex->m_handle;
+		}
+		
+		return AgTexture::kInvalidHandle;
 	}
 }
