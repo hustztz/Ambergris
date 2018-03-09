@@ -12,20 +12,20 @@ namespace ambergris {
 		AgRenderInstanceNode()
 			: AgRenderNode()
 			, m_stride(0)
+			, m_instance_db(BGFX_INVALID_HANDLE)
 		{
-			m_instance_db.data = nullptr;
-			m_instance_db.size = 0;
+			if (0 == ms_inst_decl.getStride())
+			{
+				initDecl();
+			}
 		}
 		~AgRenderInstanceNode()
 		{
+			destroy();
 		}
 
 		virtual void destroy() override;
-		virtual void draw(bgfx::ViewId view,
-			AgShader::Handle shaderHandle,
-			uint64_t state,
-			bool inOcclusionQuery = false,
-			bool needOcclusionCondition = false) override;
+		virtual void draw(bgfx::ViewId view, AgFxSystem* pFxSystem, bool inOcclusionQuery) override;
 		virtual bool appendGeometry(
 			const float* transform,
 			const uint32_t* pick_id,
@@ -37,7 +37,19 @@ namespace ambergris {
 		bool appendInstance(const float* data, unsigned int size);
 	private:
 		TBuffer<float>				m_instance_buffer;
-		bgfx::InstanceDataBuffer	m_instance_db;
+		//bgfx::InstanceDataBuffer	m_instance_db;
+		bgfx::DynamicVertexBufferHandle m_instance_db;
 		uint16_t					m_stride;
+		static void initDecl()
+		{
+			ms_inst_decl
+				.begin()
+				.add(bgfx::Attrib::TexCoord4, 4, bgfx::AttribType::Float)
+				.add(bgfx::Attrib::TexCoord5, 4, bgfx::AttribType::Float)
+				.add(bgfx::Attrib::TexCoord6, 4, bgfx::AttribType::Float)
+				.add(bgfx::Attrib::TexCoord7, 4, bgfx::AttribType::Float)
+				.end();
+		}
+		static bgfx::VertexDecl		ms_inst_decl;
 	};
 }

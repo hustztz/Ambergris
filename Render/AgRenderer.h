@@ -6,15 +6,18 @@
 
 namespace ambergris {
 
+	struct AgSceneDatabase;
+
 	struct AgRenderer
 	{
 	public:
-		void draw();
+		void evaluateScene();
 	private:
 		AgRenderer();
 		~AgRenderer();
 		friend class Singleton<AgRenderer>;
 	public:
 		AgRenderPipeline m_pipeline;
+		std::atomic<bool>		m_isEvaluating;
 	};
 }

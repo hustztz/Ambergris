@@ -17,20 +17,31 @@ namespace ambergris {
 		~AgCamera();
 
 		void reset();
-		void update(MoveStateFlag _state, float _delta);
+		void move(MoveStateFlag _state, float _delta);
+		void orbit(float _dx, float _dy);
+		void dolly(float _dz);
+		void consumeOrbit(float _amount);
+		void update(float _dt);
+
 		void getViewMtx(float* _viewMtx);
 		void setPosition(const float* _pos);
 		void getPosition(float* _pos) const;
-		void setAt(const float* _at);
-		void getAt(float* _at) const;
+		void setTarget(const float* _at);
+		void getTarget(float* _at) const;
 		void setVerticalAngle(float _verticalAngle);
 		void updateVerticalAngle(float _delta) { m_verticalAngle += _delta; }
 		void setHorizontalAngle(float _horizontalAngle);
 		void updateHorizontalAngle(float _delta) { m_horizontalAngle += _delta; }
 	protected:
-		float m_eye[3];
-		float m_at[3];
+		struct Interp3f
+		{
+			float curr[3];
+			float dest[3];
+		};
+		Interp3f m_eye;
+		Interp3f m_target;
 		float m_up[3];
+		float m_orbit[2];
 		float m_horizontalAngle;
 		float m_verticalAngle;
 	};

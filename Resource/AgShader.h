@@ -7,29 +7,28 @@
 #include <tinystl/vector.h>
 namespace stl = tinystl;
 
-namespace bx {
-	struct FileReaderI;
-}
-
 namespace ambergris {
 
 	struct AgShader : public AgResource
 	{
-		static const uint8_t SHADER_INSTANCE_OFFSET = 4;
 		enum ShaderType
 		{
 			E_LAMBERT_SHADER = 0,
-			E_INSTANCE_SHADER,
-			E_PHONG_SHADER,
+			E_SIMPLE_SHADER,
+			E_SKY_LANDSCAPE_SHADER,
 			E_PICKING_SHADER,
 
 			E_LAMBERT_INSTANCE_SHADER,
-			E_INSTANCE_INSTANCE_SHADER,
-			E_PHONG_INSTANCE_SHADER,
+			E_SIMPLE_INSTANCE_SHADER,
+			E_SKY_LANDSCAPE_INSTANCE_SHADER,
 			E_PICKING_INSTANCE_SHADER,
+
+			E_SKY,
+			E_SKY_COLOR_BANDING,
 
 			E_COUNT
 		};
+		static const uint8_t SHADER_INSTANCE_OFFSET = E_LAMBERT_INSTANCE_SHADER;
 		struct UniformSlot
 		{
 			UniformSlot()
@@ -81,7 +80,7 @@ namespace ambergris {
 	class AgShaderManager : public AgResourceContainer<AgShader, AgShader::E_COUNT>
 	{
 	public:
-		bool loadShader(bx::FileReaderI* _reader);
+		bool loadShader();
 		void unloadShader();
 	protected:
 		friend class AgMaterialManager;

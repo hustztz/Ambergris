@@ -1,29 +1,23 @@
 #include "AgRenderNode.h"
 #include "Resource/AgRenderResourceManager.h"
 #include "AgRenderPass.h"
+#include "AgFxSystem.h"
 
 #include <assert.h>
 
-#define AMBERGRIS_STATE_OCCLUSION_QUERY (0            \
-			| BGFX_STATE_DEPTH_TEST_LEQUAL       \
-			| BGFX_STATE_CULL_CW     \
-			)
-
 namespace ambergris {
 
+	/*virtual*/
 	void AgRenderNode::destroy()
 	{
 		for (uint8_t i = 0; i < AgShader::MAX_TEXTURE_SLOT_COUNT; i++)
 		{
-			m_texture[i].handle = AgTexture::kInvalidHandle;
+			m_texture[i] = AgTexture::kInvalidHandle;
 		}
-		for each (auto item in m_items)
-		{
-			item.destroyBuffers();
-		}
-		m_items.clear();
+		m_item.destroyBuffers();
 	}
 
+	/*virtual*/
 	bool AgRenderNode::appendGeometry(
 		const float* transform,
 		const uint32_t* pick_id,
@@ -34,22 +28,12 @@ namespace ambergris {
 		if (!vertBuf || 0 == vertSize || !indexBuf || 0 == indexSize)
 			return false;
 
-		if (m_items.empty())
-			m_decl = decl;
-		else
-		{
-			assert(decl.getStride() == m_decl.getStride());
-			if (decl.getStride() != m_decl.getStride())
-				return false;
-		}
-
-		AgRenderItem renderItem(decl,
+		m_decl = decl;
+		m_item.setBuffers(decl,
 			vertBuf, vertSize,
 			indexBuf, indexSize);
-		renderItem.setTransform(transform);
-		renderItem.setPickID(pick_id);
-
-		m_items.push_back(renderItem);
+		m_item.setTransform(transform);
+		m_item.setPickID(pick_id);
 		return true;
 	}
 
@@ -66,8 +50,7 @@ namespace ambergris {
 		if (slot >= shader->getTextureSlotSize())
 			return;
 
-		m_texture[slot].handle = tex_handle;
-		m_texture[slot].dirty = true;
+		m_texture[slot] = tex_handle;
 	}
 
 	void AgRenderNode::_SubmitTexture(const AgShader* shader)
@@ -77,92 +60,96 @@ namespace ambergris {
 
 		for (uint8_t i = 0; i < AgShader::MAX_TEXTURE_SLOT_COUNT; ++i)
 		{
-			const AgTexture* tex = Singleton<AgRenderResourceManager>::instance().m_textures.get(m_texture[i].handle);
+			const AgTexture* tex = Singleton<AgRenderResourceManager>::instance().m_textures.get(m_texture[i]);
 			if (!tex)
 				continue;
 
-			if (!bgfx::isValid(shader->m_texture_slots[i].uniform_handle) /*|| !m_texture[i].dirty*/)
+			if (!bgfx::isValid(shader->m_texture_slots[i].uniform_handle))
 				continue;
 
 			bgfx::setTexture(i, shader->m_texture_slots[i].uniform_handle, tex->m_tex_handle, shader->m_texture_slots[i].texture_state);
-			m_texture[i].dirty = false;
 		}
 	}
 
-	void AgRenderNode::draw(bgfx::ViewId view,
-		AgShader::Handle shaderHandle,
-		uint64_t state,
-		bool inOcclusionQuery /*= false*/,
-		bool needOcclusionCondition /*= false*/)
+	void AgRenderNode::_SubmitUniform(const AgShader* shader, AgRenderItem*	item)
 	{
-		const AgShader* shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(shaderHandle);
+		if (!shader || !item)
+			return;
+
+		for (uint16_t i = 0; i < AgShader::MAX_UNIFORM_COUNT; ++i)
+		{
+			if (!bgfx::isValid(shader->m_uniforms[i].uniform_handle) || !item->m_uniformData[i].dirty)
+				continue;
+			bgfx::setUniform(shader->m_uniforms[i].uniform_handle, item->m_uniformData[i].data);
+			item->m_uniformData[i].dirty = false;
+		}
+	}
+
+	void AgRenderNode::draw(bgfx::ViewId view, AgFxSystem* pFxSystem, bool inOcclusionQuery)
+	{
+		if (!bgfx::isValid(m_item.m_vbh) || !bgfx::isValid(m_item.m_ibh))
+			return;
+
+		const AgShader* shader = nullptr;
+		uint64_t shaderState = BGFX_STATE_DEFAULT;
+		if (pFxSystem && AgShader::E_COUNT != pFxSystem->getOverrideShader())
+		{
+			shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(pFxSystem->getOverrideShader());
+			shaderState = pFxSystem->getOverrideStates();
+		}
+		else
+		{
+			const AgMaterial* mat = Singleton<AgRenderResourceManager>::instance().m_materials.get(m_material_handle);
+			if (!mat)
+				return;
+
+			shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(mat->getShaderHandle());
+			shaderState = mat->m_state_flags;
+		}
+		
 		if (!shader)
 			return;
 
-		_SubmitTexture(shader);
+		if (AgRenderPass::E_PASS_ID == view && pFxSystem)
+		{
+			// Submit ID pass based on mesh ID
+			float idsF[4];
+			idsF[0] = m_item.m_pick_id[0] / 255.0f;
+			idsF[1] = m_item.m_pick_id[1] / 255.0f;
+			idsF[2] = m_item.m_pick_id[2] / 255.0f;
+			idsF[3] = 1.0f;
+			pFxSystem->setOverrideResource(shader, idsF);
+		}
+		else
+		{
+			if (!pFxSystem || pFxSystem->needTexture())
+				_SubmitTexture(shader);
+
+			if (pFxSystem)
+			{
+				pFxSystem->setOverrideResource(shader, nullptr);
+			}
+			_SubmitUniform(shader, &m_item);
+		}
+
+		bgfx::setState(shaderState);
+		m_item.submit();
 
 		bgfx::ProgramHandle progHandle = shader->m_program;
-		bgfx::setState(state);
-		for (AgRenderNode::RenderItemArray::iterator it = m_items.begin(), itEnd = m_items.end(); it != itEnd; ++it)
+
+		if (AgShader::E_SIMPLE_SHADER == pFxSystem->getOverrideShader() && bgfx::isValid(m_item.m_oqh))
 		{
-			if (AgRenderPass::E_PASS_ID == view)
-			{
-				// Submit ID pass based on mesh ID
-				float idsF[4];
-				idsF[0] = it->m_pick_id[0] / 255.0f;
-				idsF[1] = it->m_pick_id[1] / 255.0f;
-				idsF[2] = it->m_pick_id[2] / 255.0f;
-				idsF[3] = 1.0f;
-				bgfx::setUniform(shader->m_uniforms[0].uniform_handle, idsF);
-			}
-			else
-			{
-				// Update Uniforms
-				for (uint8_t i = 0; i < AgShader::MAX_UNIFORM_COUNT; ++i)
-				{
-					if (!bgfx::isValid(shader->m_uniforms[i].uniform_handle) || !it->m_uniformData[i].dirty)
-						continue;
-					bgfx::setUniform(shader->m_uniforms[i].uniform_handle, it->m_uniformData[i].data);
-					it->m_uniformData[i].dirty = false;
-				}
-			}
-
-			it->submit();
-			if (inOcclusionQuery)
-			{
-				if (bgfx::isValid(it->m_oqh))
-				{
-					if (needOcclusionCondition)
-					{
-						bgfx::setState(AMBERGRIS_STATE_OCCLUSION_QUERY);
-						bgfx::setCondition(it->m_oqh, true);
-						bgfx::submit(view, progHandle, 0, it != itEnd - 1);
-					}
-					bgfx::submit(view, progHandle, it->m_oqh, 0, it != itEnd - 1);
-				}
-				else
-				{
-					bgfx::setCondition(BGFX_INVALID_HANDLE, false);
-					bgfx::setState(state);
-					bgfx::submit(view, progHandle, 0, it != itEnd - 1);
-				}
-			}
-			else
-			{
-				bgfx::submit(view, progHandle, 0, it != itEnd - 1);
-			}
+			bgfx::setCondition(m_item.m_oqh, true);
+			bgfx::submit(view, progHandle);
 		}
-	}
-
-	void AgRenderNode::draw(bgfx::ViewId view, bool inOcclusionQuery /*= false*/)
-	{
-		const AgMaterial* mat = Singleton<AgRenderResourceManager>::instance().m_materials.get(m_material_handle);
-		if (!mat)
-			return;
-		if (m_items.empty())
-			return;
-
-		draw(view, mat->getShaderHandle(), mat->m_state_flags, inOcclusionQuery, true);
+		else if (inOcclusionQuery && bgfx::isValid(m_item.m_oqh))
+		{
+			bgfx::submit(view, progHandle, m_item.m_oqh);
+		}
+		else
+		{
+			bgfx::submit(view, progHandle);
+		}
 	}
 
 }

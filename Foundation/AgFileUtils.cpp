@@ -1,11 +1,15 @@
 #include "AgFileUtils.h"
+#include <bx/readerwriter.h>
 #include "BGFX/entry/dbg.h"
+
+#include "BGFX/entry/entry.h"//TODO
 
 namespace ambergris {
 	namespace fileUtils {
 
-		const bgfx::Memory* loadMem(bx::FileReaderI* _reader, const char* _filePath)
+		const bgfx::Memory* loadMem(const char* _filePath)
 		{
+			bx::FileReaderI* _reader = entry::getFileReader();
 			if (bx::open(_reader, _filePath))
 			{
 				uint32_t size = (uint32_t)bx::getSize(_reader);
@@ -20,8 +24,10 @@ namespace ambergris {
 			return NULL;
 		}
 
-		void* load(bx::FileReaderI* _reader, bx::AllocatorI* _allocator, const char* _filePath, uint32_t* _size)
+		void* load(const char* _filePath, uint32_t* _size)
 		{
+			bx::AllocatorI* _allocator = entry::getAllocator();
+			bx::FileReaderI* _reader = entry::getFileReader();
 			if (bx::open(_reader, _filePath))
 			{
 				uint32_t size = (uint32_t)bx::getSize(_reader);
@@ -47,8 +53,9 @@ namespace ambergris {
 			return NULL;
 		}
 
-		void unload(bx::AllocatorI* _allocator, void* _ptr)
+		void unload(void* _ptr)
 		{
+			bx::AllocatorI* _allocator = entry::getAllocator();
 			BX_FREE(_allocator, _ptr);
 		}
 	}

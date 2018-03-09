@@ -180,7 +180,7 @@ struct Camera
 			_camera_state |= ambergris::AgCamera::E_MOVE_DOWN;
 		}
 
-		m_camera.update((ambergris::AgCamera::MoveStateFlag)_camera_state, _deltaTime * m_moveSpeed);
+		m_camera.move((ambergris::AgCamera::MoveStateFlag)_camera_state, _deltaTime * m_moveSpeed);
 
 		if (m_keys & CAMERA_KEY_FORWARD)
 		{
@@ -220,7 +220,7 @@ struct Camera
 
 	void setFocus(const float* _pos)
 	{
-		m_camera.setAt(_pos);
+		m_camera.setTarget(_pos);
 	}
 
 	void setVerticalAngle(float _verticalAngle)
@@ -296,7 +296,7 @@ void cameraGetPosition(float* _pos)
 
 void cameraGetAt(float* _at)
 {
-	s_camera->m_camera.getAt(_at);
+	s_camera->m_camera.getTarget(_at);
 }
 
 void cameraUpdate(float _deltaTime, const entry::MouseState& _mouseState)

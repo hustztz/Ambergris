@@ -1,11 +1,15 @@
 #pragma once
 #include "AgResource.h"
-
+//#include <mutex>
 #include <bx/allocator.h>
 
+#ifdef USING_TINYSTL
 #include <tinystl/allocator.h>
 #include <tinystl/vector.h>
 namespace stl = tinystl;
+#else
+#include <vector>
+#endif
 
 namespace ambergris {
 
@@ -37,6 +41,7 @@ namespace ambergris {
 			}
 			
 			res->m_handle = (AgResource::Handle)getSize();
+			//std::lock_guard<std::mutex> lck(m_mutex);
 			m_resource_arr.push_back(res);
 			return res;
 		}
@@ -47,17 +52,24 @@ namespace ambergris {
 
 		size_t getSize() const { return m_resource_arr.size(); }
 		const T* get(AgResource::Handle id) const {
+			//std::lock_guard<std::mutex> lck(m_mutex);
 			if (id >= 0 && id < getSize())
 				return m_resource_arr[id];
 			return nullptr;
 		}
 		T* get(AgResource::Handle id) {
+			//std::lock_guard<std::mutex> lck(m_mutex);
 			if (id >= 0 && id < getSize())
-				return const_cast<T*>(m_resource_arr[id]);
+				return m_resource_arr[id];
 			return nullptr;
 		}
 	protected:
+#ifdef USING_TINYSTL
 		typedef stl::vector<T*> Resources;
+#else
+		typedef std::vector<T*> Resources;
+#endif
 		Resources		m_resource_arr;
+		//mutable std::mutex		m_mutex;
 	};
 }

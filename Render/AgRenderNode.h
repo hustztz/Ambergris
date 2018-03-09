@@ -4,6 +4,8 @@
 
 namespace ambergris {
 
+	class AgFxSystem;
+
 	class AgRenderNode : public AgResource
 	{
 	public:
@@ -20,12 +22,7 @@ namespace ambergris {
 
 		virtual void destroy();
 		virtual bool prepare() { return true; }
-		virtual void draw(bgfx::ViewId view, bool inOcclusionQuery = false);
-		virtual void draw(bgfx::ViewId view,
-			AgShader::Handle shaderHandle,
-			uint64_t state,
-			bool inOcclusionQuery = false,
-			bool needOcclusionCondition = false);
+		virtual void draw(bgfx::ViewId view, AgFxSystem* pFxSystem, bool inOcclusionQuery);
 		virtual bool appendGeometry(
 			const float* transform,
 			const uint32_t* pick_id,
@@ -38,16 +35,11 @@ namespace ambergris {
 		void setTexture(uint8_t slot, AgTexture::Handle tex_handle);
 	protected:
 		void _SubmitTexture(const AgShader* shader);
+		void _SubmitUniform(const AgShader* shader, AgRenderItem*	item);
 	protected:
-		struct TextureData
-		{
-			AgTexture::Handle	handle;
-			bool				dirty;
-		};
-		TextureData			m_texture[AgShader::MAX_TEXTURE_SLOT_COUNT];
+		AgTexture::Handle	m_texture[AgShader::MAX_TEXTURE_SLOT_COUNT];
 		bgfx::VertexDecl	m_decl;
 		AgMaterial::Handle	m_material_handle;
-		typedef stl::vector<AgRenderItem> RenderItemArray;
-		RenderItemArray		m_items;
+		AgRenderItem		m_item;
 	};
 }

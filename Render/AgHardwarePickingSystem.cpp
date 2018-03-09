@@ -15,35 +15,21 @@ namespace ambergris {
 		, m_pickingRTDepth(BGFX_INVALID_HANDLE)
 		, m_blitTex(BGFX_INVALID_HANDLE)
 		, m_pickingFB(BGFX_INVALID_HANDLE)
-		, m_fov(3.0f)
 		, m_isPicked(false)
 	{
 		const bgfx::Caps* caps = bgfx::getCaps();
 		m_homogeneousDepth = caps->homogeneousDepth;
 		m_isDX9 = (bgfx::RendererType::Direct3D9 == caps->rendererType);
+		init();
 	}
 
 	AgHardwarePickingSystem::~AgHardwarePickingSystem()
 	{
-		if (bgfx::isValid(m_pickingRT))
-		{
-			bgfx::destroy(m_pickingRT);
-		}
-		if (bgfx::isValid(m_pickingRTDepth))
-		{
-			bgfx::destroy(m_pickingRTDepth);
-		}
-		if (bgfx::isValid(m_blitTex))
-		{
-			bgfx::destroy(m_blitTex);
-		}
-		if (bgfx::isValid(m_pickingFB))
-		{
-			bgfx::destroy(m_pickingFB);
-		}
+		destroy();
 	}
 
-	void AgHardwarePickingSystem::init()
+	/*virtual*/
+	bool AgHardwarePickingSystem::init()
 	{
 		// Set up ID buffer, which has a color target and depth buffer
 		m_pickingRT = bgfx::createTexture2D(ID_DIM, ID_DIM, false, 1, bgfx::TextureFormat::RGBA8, 0
@@ -82,9 +68,40 @@ namespace ambergris {
 			m_pickingRTDepth
 		};
 		m_pickingFB = bgfx::createFrameBuffer(BX_COUNTOF(rt), rt, true);
+		return bgfx::isValid(m_pickingFB);
 	}
 
-	void AgHardwarePickingSystem::update(bgfx::ViewId view_pass, float* invViewProj, float mouseXNDC, float mouseYNDC)
+	/*virtual*/
+	void AgHardwarePickingSystem::destroy()
+	{
+		if (bgfx::isValid(m_pickingFB))
+		{
+			bgfx::destroy(m_pickingFB);
+		}
+		if (bgfx::isValid(m_pickingRT))
+		{
+			bgfx::destroy(m_pickingRT);
+		}
+		if (bgfx::isValid(m_pickingRTDepth))
+		{
+			bgfx::destroy(m_pickingRTDepth);
+		}
+		if (bgfx::isValid(m_blitTex))
+		{
+			bgfx::destroy(m_blitTex);
+		}
+	}
+
+	/*virtual*/
+	void AgHardwarePickingSystem::setOverrideResource(const AgShader* shader, void* data) const
+	{
+		if (!shader || !data)
+			return;
+
+		bgfx::setUniform(shader->m_uniforms[0].uniform_handle, data);
+	}
+
+	void AgHardwarePickingSystem::update(bgfx::ViewId view_pass, float* invViewProj, float mouseXNDC, float mouseYNDC, float fov)
 	{
 		bgfx::setViewFrameBuffer(view_pass, m_pickingFB);
 
@@ -102,12 +119,13 @@ namespace ambergris {
 
 		// Tight FOV is best for picking
 		float pickProj[16];
-		bx::mtxProj(pickProj, m_fov, 1, 0.1f, 100.0f, m_homogeneousDepth);
+		bx::mtxProj(pickProj, fov, 1, 0.01f, 10000.0f, m_homogeneousDepth);
 
 		// View rect and transforms for picking pass
 		bgfx::setViewRect(view_pass, 0, 0, ID_DIM, ID_DIM);
 		bgfx::setViewTransform(view_pass, pickView, pickProj);
 
+		m_isPicked = true;
 	}
 
 	uint32_t AgHardwarePickingSystem::readBlit(bgfx::ViewId view_pass)

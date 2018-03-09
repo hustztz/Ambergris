@@ -1,10 +1,13 @@
 #include "AgShaderUtils.h"
 #include "Foundation/AgFileUtils.h"
 
+#include <bx/bx.h>
+#include <bx/string.h>
+
 namespace ambergris {
 	namespace shaderUtils {
 
-		bgfx::ShaderHandle loadShader(bx::FileReaderI* _reader, const char* _name)
+		bgfx::ShaderHandle loadShader(const char* _name)
 		{
 			char filePath[512];
 
@@ -31,19 +34,19 @@ namespace ambergris {
 			bx::strCat(filePath, BX_COUNTOF(filePath), _name);
 			bx::strCat(filePath, BX_COUNTOF(filePath), ".bin");
 
-			bgfx::ShaderHandle handle = bgfx::createShader(fileUtils::loadMem(_reader, filePath));
+			bgfx::ShaderHandle handle = bgfx::createShader(fileUtils::loadMem(filePath));
 			bgfx::setName(handle, filePath);
 
 			return handle;
 		}
 
-		bgfx::ProgramHandle loadProgram(bx::FileReaderI* _reader, const char* _vsName, const char* _fsName)
+		bgfx::ProgramHandle loadProgram(const char* _vsName, const char* _fsName)
 		{
-			bgfx::ShaderHandle vsh = loadShader(_reader, _vsName);
+			bgfx::ShaderHandle vsh = loadShader(_vsName);
 			bgfx::ShaderHandle fsh = BGFX_INVALID_HANDLE;
 			if (NULL != _fsName)
 			{
-				fsh = loadShader(_reader, _fsName);
+				fsh = loadShader(_fsName);
 			}
 
 			return bgfx::createProgram(vsh, fsh, true /* destroy shaders when program is destroyed */);

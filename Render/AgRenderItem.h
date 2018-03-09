@@ -3,6 +3,8 @@
 #include "Resource/AgTexture.h"
 #include "Resource/AgShader.h"
 
+#include <atomic>
+
 namespace ambergris {
 
 	class AgRenderItem
@@ -11,20 +13,29 @@ namespace ambergris {
 		struct UniformData
 		{
 			UniformData() : data(nullptr), dirty(false) {}
+			UniformData& operator= (const UniformData& other) {
+				this->type = other.type;
+				this->data = other.data;
+				this->dirty = false;//atomic has no operator= function.
+				return *this;
+			}
+			UniformData(const UniformData& other) {
+				this->type = other.type;
+				this->data = other.data;
+				this->dirty = false;//atomic has no copy construction function.
+			}
 			bgfx::UniformType::Enum type;
 			void*					data;
-			bool					dirty;
+			std::atomic<bool>		dirty;
 		};
 	public:
 		AgRenderItem();
-		AgRenderItem(
+		~AgRenderItem();
+
+		void setBuffers(
 			const bgfx::VertexDecl& decl,
 			const uint8_t* vertBuf, uint32_t vertSize,
 			const uint16_t* indexBuf, uint32_t indexSize);
-		~AgRenderItem()
-		{
-		}
-
 		void setTransform(const float* mtx);
 		void setPickID(const uint32_t* id);
 
@@ -41,6 +52,7 @@ namespace ambergris {
 	private:
 		friend class AgRenderNode;
 		friend class AgRenderInstanceNode;
+		friend class AgRenderCompoundNode;
 
 		bgfx::OcclusionQueryHandle	m_oqh;
 		bgfx::VertexBufferHandle	m_vbh;

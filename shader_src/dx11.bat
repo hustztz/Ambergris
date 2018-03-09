@@ -1,4 +1,11 @@
-..\tools\shadercRelease.exe -f vs_lambert.sc -o ..\runtime\shaders\dx11\vs_lambert.bin --depends -i common --varyingdef varying.def.sc --platform windows -p vs_4_0 -O 3 --type vertex -O3
+..\tools\shadercRelease.exe -f vs_instancing.sc -o ..\runtime\shaders\dx11\vs_instancing.bin --depends -i common --varyingdef varying.def.sc --platform windows -p vs_4_0 -O 3 --type vertex -O3
+..\tools\shadercRelease.exe -f vs_pick_instancing.sc -o ..\runtime\shaders\dx11\vs_pick_instancing.bin --depends -i common --varyingdef varying.def.sc --platform windows -p vs_4_0 -O 3 --type vertex -O3
+..\tools\shadercRelease.exe -f vs_mesh.sc -o ..\runtime\shaders\dx11\vs_mesh.bin --depends -i common --varyingdef varying.def.sc --platform windows -p vs_4_0 -O 3 --type vertex -O3
+..\tools\shadercRelease.exe -f fs_simple.sc -o ..\runtime\shaders\dx11\fs_simple.bin --depends -i common --varyingdef varying.def.sc --platform windows -p ps_4_0 -O 3 --type fragment -O3
 ..\tools\shadercRelease.exe -f fs_lambert.sc -o ..\runtime\shaders\dx11\fs_lambert.bin --depends -i common --varyingdef varying.def.sc --platform windows -p ps_4_0 -O 3 --type fragment -O3
 ..\tools\shadercRelease.exe -f vs_picking.sc -o ..\runtime\shaders\dx11\vs_picking.bin --depends -i common --varyingdef varying.def.sc --platform windows -p vs_4_0 -O 3 --type vertex -O3
 ..\tools\shadercRelease.exe -f fs_picking_id.sc -o ..\runtime\shaders\dx11\fs_picking_id.bin --depends -i common --varyingdef varying.def.sc --platform windows -p ps_4_0 -O 3 --type fragment -O3
+..\tools\shadercRelease.exe -f vs_sky.sc -o ..\runtime\shaders\dx11\vs_sky.bin --depends -i common --varyingdef varying.def.sc --platform windows -p vs_4_0 -O 3 --type vertex -O3
+..\tools\shadercRelease.exe -f fs_sky.sc -o ..\runtime\shaders\dx11\fs_sky.bin --depends -i common --varyingdef varying.def.sc --platform windows -p ps_4_0 -O 3 --type fragment -O3
+..\tools\shadercRelease.exe -f fs_sky_color_banding_fix.sc -o ..\runtime\shaders\dx11\fs_sky_color_banding_fix.bin --depends -i common --varyingdef varying.def.sc --platform windows -p ps_4_0 -O 3 --type fragment -O3
+..\tools\shadercRelease.exe -f fs_sky_landscape.sc -o ..\runtime\shaders\dx11\fs_sky_landscape.bin --depends -i common --varyingdef varying.def.sc --platform windows -p ps_4_0 -O 3 --type fragment -O3

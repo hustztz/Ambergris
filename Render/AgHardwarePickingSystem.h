@@ -1,26 +1,28 @@
 #pragma once
-
+#include "AgFxSystem.h"
 #include "Resource/AgShader.h"
 
 namespace ambergris {
 
-	class AgHardwarePickingSystem
+	class AgHardwarePickingSystem : public AgFxSystem
 	{
 		static const uint8_t ID_DIM = 8;
 	public:
 		AgHardwarePickingSystem();
 		~AgHardwarePickingSystem();
 
-		void init();
-		void update(bgfx::ViewId view_pass, float* invViewProj, float mouseXNDC, float mouseYNDC);
+		virtual bool init() override;
+		virtual void destroy() override;
+		virtual void setOverrideResource(const AgShader* shader, void* data) const override;
+		virtual bool needTexture() const override { return false; }
+		virtual AgShader::Handle getOverrideShader() const override { return AgShader::E_PICKING_SHADER; }
+		virtual uint64_t getOverrideStates() const override { return BGFX_STATE_DEFAULT; }
+
+		void update(bgfx::ViewId view_pass, float* invViewProj, float mouseXNDC, float mouseYNDC, float fov);
 		uint8_t acquireResult(bool isSinglePick = true);
 		uint32_t readBlit(bgfx::ViewId view_pass);
-
+		bgfx::TextureHandle getFBTexture() const { return m_pickingRT; }
 		bool isPicked() const { return m_isPicked; }
-		void Picked() { m_isPicked = true; }
-
-		static AgShader::Handle getPickingShader() { return AgShader::E_PICKING_SHADER;	}
-		static uint64_t getPickingStates() { return BGFX_STATE_DEFAULT;	}
 	protected:
 	private:
 		bgfx::TextureHandle m_pickingRT;
@@ -28,7 +30,6 @@ namespace ambergris {
 		bgfx::TextureHandle m_blitTex;
 		bgfx::FrameBufferHandle m_pickingFB;
 
-		float	m_fov;
 		bool	m_homogeneousDepth;
 		bool	m_isDX9;
 		bool	m_isPicked;

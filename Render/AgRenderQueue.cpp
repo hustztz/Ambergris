@@ -25,6 +25,7 @@ namespace ambergris {
 
 		renderNode->m_handle = (AgResource::Handle)getSize();
 		m_resource_arr.push_back(renderNode);
+		renderNode->m_dirty = true;
 		return renderNode->m_handle;
 	}
 

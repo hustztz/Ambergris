@@ -2,13 +2,24 @@
 
 #include "AgObject.h"
 #include "Resource/AgShader.h"
+#ifdef USING_TINYSTL
 #include <tinystl/vector.h>
+#else
+#include <vector>
+#endif
+
+#include <bx/rng.h>
 
 namespace ambergris {
 
 	struct AgMesh : public AgObject
 	{
-		AgMesh() : AgObject(), m_inst_handle(-1), m_bShadowCaster(false) {};
+		AgMesh() : AgObject(), m_inst_handle(-1), m_bShadowCaster(false) {
+			bx::RngMwc mwc;  // Random number generator
+			m_pick_id[0] = mwc.gen() % 256;
+			m_pick_id[1] = mwc.gen() % 256;
+			m_pick_id[2] = mwc.gen() % 256;
+		};
 		void evaluateBoundingBox();
 
 		struct Geometry
@@ -41,9 +52,14 @@ namespace ambergris {
 			Handle	material_handle;
 			Handle	texture_handle[AgShader::MAX_TEXTURE_SLOT_COUNT];
 		};
+#ifdef USING_TINYSTL
 		typedef stl::vector<Geometry> Geometries;
+#else
+		typedef std::vector<Geometry> Geometries;
+#endif
 		Geometries		m_geometries;
 		int				m_inst_handle;
+		uint32_t		m_pick_id[3];
 		bool			m_bShadowCaster;		// Initial shadow preference (overridden by renderables section of .unit)
 	};
 }

@@ -11,15 +11,9 @@ namespace ambergris {
 	{
 	}
 
-	AgRenderItem::AgRenderItem(
-		const bgfx::VertexDecl& decl,
-		const uint8_t* vertBuf, uint32_t vertSize,
-		const uint16_t* indexBuf, uint32_t indexSize)
-		: m_oqh(BGFX_INVALID_HANDLE)
+	AgRenderItem::~AgRenderItem()
 	{
-		_ResetTransform();
-		_SetVertexBuffer(decl, vertBuf, vertSize);
-		_SetIndexBuffer(indexBuf, indexSize);
+		destroyBuffers();
 	}
 
 	void AgRenderItem::destroyBuffers()
@@ -35,6 +29,16 @@ namespace ambergris {
 			bgfx::destroy(m_ibh);
 			m_ibh.idx = BGFX_INVALID_HANDLE;
 		}
+	}
+
+	void AgRenderItem::setBuffers(
+		const bgfx::VertexDecl& decl,
+		const uint8_t* vertBuf, uint32_t vertSize,
+		const uint16_t* indexBuf, uint32_t indexSize)
+	{
+		_ResetTransform();
+		_SetVertexBuffer(decl, vertBuf, vertSize);
+		_SetIndexBuffer(indexBuf, indexSize);
 	}
 
 	void AgRenderItem::_SetVertexBuffer(const bgfx::VertexDecl& decl, const uint8_t* buffer, uint32_t size)
@@ -55,7 +59,7 @@ namespace ambergris {
 		/*const bgfx::Memory* mem = bgfx::alloc(size);
 		m_ibh = bgfx::createIndexBuffer(mem);
 		memcpy_s(mem->data, mem->size, buffer, size);*/
-		const bgfx::Memory* mem = bgfx::makeRef(buffer, size);
+		const bgfx::Memory* mem = bgfx::makeRef(buffer, size/sizeof(uint16_t));
 		m_ibh = bgfx::createIndexBuffer(mem);
 	}
 

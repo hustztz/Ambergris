@@ -32,5 +32,6 @@ namespace ambergris {
 			toAabb(m_bb.m_aabb, vb->m_vertex_buffer.GetData(), vertexNum, stride);
 			calcObb(m_bb.m_obb, vb->m_vertex_buffer.GetData(), vertexNum, stride);
 		}
+		m_bb.m_initialized = true;
 	}
 }

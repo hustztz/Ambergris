@@ -17,7 +17,6 @@ namespace ambergris {
 			E_STATIC_SCENE_OPAQUE = 0,
 			E_STATIC_SCENE_TRANSPARENT,
 			E_WIREFRAME,
-			E_UI_OPAQUE,
 
 			E_TYPE_COUNT
 		}; 

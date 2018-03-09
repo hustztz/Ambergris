@@ -65,6 +65,8 @@ namespace ambergris_fbx {
 		ambergris::AgSceneImportOptions m_import_options;
 		typedef std::map<FbxMesh*, ambergris::AgResource::Handle> InstanceMap;
 		InstanceMap m_instance_map;
+		typedef std::map<FbxFileTexture*, ambergris::AgResource::Handle> TextureMap;
+		TextureMap m_texture_map;
 		FbxAMatrix m_originPosition;
 
 		// Vars

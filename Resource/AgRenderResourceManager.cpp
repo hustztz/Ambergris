@@ -11,11 +11,14 @@ namespace ambergris {
 		destroy();
 	}
 
-	void AgRenderResourceManager::init(bx::FileReaderI* _reader)
+	bool AgRenderResourceManager::init()
 	{
-		if (!m_shaders.loadShader(_reader))
-			return;
+		if (!m_shaders.loadShader())
+			return false;
 		m_materials.init();
+		if (!m_text.init())
+			return false;
+		return true;
 	}
 
 	void AgRenderResourceManager::destroy()
@@ -23,5 +26,6 @@ namespace ambergris {
 		m_shaders.unloadShader();
 		m_materials.destroy();
 		m_textures.destroy();
+		m_text.destroy();
 	}
 }

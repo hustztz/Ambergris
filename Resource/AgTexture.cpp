@@ -31,14 +31,14 @@ namespace ambergris {
 		bimg::imageFree(imageContainer);
 	}
 
-	AgTexture::Handle AgTextureManager::append(bx::AllocatorI* allocator, bx::FileReaderI* _reader, const char* _name, uint32_t _flags)
+	AgTexture::Handle AgTextureManager::append(const char* _name, uint32_t _flags)
 	{
 		uint32_t size;
-		void* data = fileUtils::load(_reader, allocator, _name, &size);
+		void* data = fileUtils::load(_name, &size);
 		if (NULL == data)
 			return AgResource::kInvalidHandle;
 
-		bimg::ImageContainer* imageContainer = bimg::imageParse(allocator, data, size);
+		bimg::ImageContainer* imageContainer = bimg::imageParse(entry::getAllocator(), data, size);
 		if (NULL == imageContainer)
 			return AgResource::kInvalidHandle;
 
@@ -46,7 +46,7 @@ namespace ambergris {
 		{
 			DBG("Convert texture: %s", _name);
 			bimg::TextureFormat::Enum outputFormat = imageContainer->m_format;
-			bimg::ImageContainer* output = bimg::imageConvert(allocator, outputFormat, *imageContainer);
+			bimg::ImageContainer* output = bimg::imageConvert(entry::getAllocator(), outputFormat, *imageContainer);
 			bimg::imageFree(imageContainer);
 			imageContainer = output;
 		}
@@ -57,7 +57,7 @@ namespace ambergris {
 			, imageReleaseCb
 			, imageContainer
 		);
-		fileUtils::unload(allocator, data);
+		fileUtils::unload(data);
 
 		bgfx::TextureHandle handle = BGFX_INVALID_HANDLE;
 		if (imageContainer->m_cubeMap)
@@ -95,10 +95,12 @@ namespace ambergris {
 				, mem
 			);
 		}
+		if(!bgfx::isValid(handle))
+			return AgResource::kInvalidHandle;
 
 		bgfx::setName(handle, _name);
 
-		AgTexture* tex = AgResourcePool<AgTexture>::allocate<AgTexture>(allocator);
+		AgTexture* tex = AgResourcePool<AgTexture>::allocate<AgTexture>(entry::getAllocator());
 		if (!tex)
 			return AgResource::kInvalidHandle;
 		tex->m_name = stl::string(_name);
@@ -148,6 +150,24 @@ namespace ambergris {
 			return tex->m_handle;
 		}
 		
+		return AgTexture::kInvalidHandle;
+	}
+
+	AgTexture::Handle AgTextureManager::find(const char* _name)
+	{
+		for (int i = 0; i < getSize(); ++i)
+		{
+			const AgTexture* tex = get(i);
+			if (!tex)
+				continue;
+			if (bgfx::isValid(tex->m_tex_handle))
+			{
+				if (0 == std::strcmp(tex->m_name.c_str(), _name))
+				{
+					return i;
+				}
+			}
+		}
 		return AgTexture::kInvalidHandle;
 	}
 }

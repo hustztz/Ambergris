@@ -4,17 +4,14 @@
 #include "AgIndexBuffer.h"
 #include "AgMaterial.h"
 #include "AgTexture.h"
+#include "AgTextManager.h"
 #include "Foundation/Singleton.h"
-
-namespace bx {
-	struct FileReaderI;
-}
 
 namespace ambergris {
 
 	struct AgRenderResourceManager
 	{
-		void init(bx::FileReaderI* _reader);
+		bool init();
 		void destroy();
 
 		typedef AgResourcePool<AgVertexBuffer> VertexBufferPool;
@@ -25,6 +22,7 @@ namespace ambergris {
 		AgMaterialManager		m_materials;
 		AgShaderManager			m_shaders;
 		AgTextureManager		m_textures;
+		AgTextManager			m_text;
 	private:
 		AgRenderResourceManager();
 		~AgRenderResourceManager();

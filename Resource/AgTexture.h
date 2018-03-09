@@ -26,7 +26,7 @@ namespace ambergris {
 	class AgTextureManager : public AgResourcePool<AgTexture>
 	{
 	public:
-		AgTexture::Handle append(bx::AllocatorI* allocator, bx::FileReaderI* _reader, const char* _name, uint32_t _flags);
+		AgTexture::Handle append(const char* _name, uint32_t _flags);
 		AgTexture::Handle append(uint16_t _width
 			, uint16_t _height
 			, uint16_t _depth
@@ -34,6 +34,7 @@ namespace ambergris {
 			, uint16_t _numLayers
 			, bgfx::TextureFormat::Enum _format
 			, uint32_t _flags);
+		AgTexture::Handle find(const char* _name);
 		virtual void destroy() override;
 	protected:
 	private:

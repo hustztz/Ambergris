@@ -7,6 +7,7 @@
 
 #include <assert.h>
 #include <vector>
+#include <thread>
 
 #ifdef FBX_IMPORT_PROFILE_ENABLE
 #include "profiler/code_profiler.h"
@@ -198,8 +199,10 @@ namespace ambergris_fbx {
 		//	FbxSystemUnit::cm.ConvertScene(m_pScene);
 		//}
 
-		// Triangulate all meshes that are not triangulated
+		const bool bTriangled = m_pSdkManager->GetIOSettings()->GetBoolProp(IOSN_TRIANGULATE, false);
+		if(!bTriangled)
 		{
+			// Triangulate all meshes that are not triangulated
 			FBX_IMPORT_PROFILE("[FBX] Triangulate");
 			FbxGeometryConverter GeomConverter(m_pSdkManager);
 			GeomConverter.RemoveBadPolygonsFromMeshes(m_pScene);
@@ -209,8 +212,8 @@ namespace ambergris_fbx {
 		FbxNode* lRootNode = m_pScene->GetRootNode();
 		m_originPosition = lRootNode->EvaluateGlobalTransform();
 		m_instance_map.clear();
+		m_texture_map.clear();
 		_TraverseNodeRecursive(lRootNode);
-		m_instance_map.clear();
 
 		return true;
 	}
@@ -237,6 +240,13 @@ namespace ambergris_fbx {
 			ElementIndex = pLayerElement->GetIndexArray().GetAt(ElementIndex);
 		}
 		return ElementIndex;
+	}
+
+	static void EvaluateBoundingBox(AgObject::Handle handle)
+	{
+		AgMesh* pMesh = dynamic_cast<AgMesh*>(Singleton<AgSceneDatabase>::instance().get(handle));
+		if(pMesh)
+			pMesh->evaluateBoundingBox();
 	}
 
 	void FbxImportManager::_ExtractMesh(ambergris::AgMesh& renderNode, FbxMesh *pMesh)
@@ -300,7 +310,7 @@ namespace ambergris_fbx {
 						int material_id = 0;
 						if (poly_index < n_material_ids)
 						{
-							int material_id = lMaterialIndice->GetAt(poly_index);
+							material_id = lMaterialIndice->GetAt(poly_index);
 							if (material_id < 0 || material_id >= (int)n_materials) {
 								material_id = 0;
 							}
@@ -758,21 +768,21 @@ namespace ambergris_fbx {
 			const AgMesh* tmpNode = dynamic_cast<const AgMesh*>(agScene.get(i));
 			if(!tmpNode)
 				continue;
-			if (std::strcmp(node->GetParent()->GetName(), tmpNode->m_name.c_str()))
+			if (0 == std::strcmp(node->GetParent()->GetName(), tmpNode->m_name.c_str()))
 			{
 				parent_handle = tmpNode->m_handle;
 				break;
 			}
 		}
 
-		AgMesh* renderNode = dynamic_cast<AgMesh*>(agScene.allocate<AgMesh>(entry::getAllocator()));
-		if (!renderNode)
+		AgMesh* sceneMesh = dynamic_cast<AgMesh*>(agScene.allocate<AgMesh>(entry::getAllocator()));
+		if (!sceneMesh)
 			return;
-		renderNode->m_name = stl::string(node->GetName());
-		renderNode->m_parent_handle = parent_handle;
+		sceneMesh->m_name = stl::string(node->GetName());
+		sceneMesh->m_parent_handle = parent_handle;
 
 		// Transform
-		FbxAMatrix lGlobalPosition = pMesh->GetNode()->EvaluateGlobalTransform();
+		FbxAMatrix lGlobalPosition = node->EvaluateGlobalTransform();
 		// TODO: need precompute
 		if (m_originPosition.IsIdentity())
 		{
@@ -782,23 +792,23 @@ namespace ambergris_fbx {
 		{
 			for (int n = 0; n < 4; n++)
 			{
-				renderNode->m_global_transform[m*4+n] = (float)lGlobalPosition.Get(m, n);
+				sceneMesh->m_global_transform[m*4+n] = (float)lGlobalPosition.Get(m, n);
 			}
 		}
-		renderNode->m_global_transform[12] = renderNode->m_global_transform[12] - (float)m_originPosition.Get(3, 0);
-		renderNode->m_global_transform[13] = renderNode->m_global_transform[13] - (float)m_originPosition.Get(3, 1);
-		renderNode->m_global_transform[14] = renderNode->m_global_transform[14] - (float)m_originPosition.Get(3, 2);
-		FbxAMatrix lLocalPosition = pMesh->GetNode()->EvaluateLocalTransform();
+		sceneMesh->m_global_transform[12] = sceneMesh->m_global_transform[12] - (float)m_originPosition.Get(3, 0);
+		sceneMesh->m_global_transform[13] = sceneMesh->m_global_transform[13] - (float)m_originPosition.Get(3, 1);
+		sceneMesh->m_global_transform[14] = sceneMesh->m_global_transform[14] - (float)m_originPosition.Get(3, 2);
+		FbxAMatrix lLocalPosition = node->EvaluateLocalTransform();
 		for (int m = 0; m < 4; m++)
 		{
 			for (int n = 0; n < 4; n++)
 			{
-				renderNode->m_local_transform[m * 4 + n] = (float)lLocalPosition.Get(m, n);
+				sceneMesh->m_local_transform[m * 4 + n] = (float)lLocalPosition.Get(m, n);
 			}
 		}
-		renderNode->m_local_transform[12] = renderNode->m_local_transform[12] - (float)m_originPosition.Get(3, 0);
-		renderNode->m_local_transform[13] = renderNode->m_local_transform[13] - (float)m_originPosition.Get(3, 1);
-		renderNode->m_local_transform[14] = renderNode->m_local_transform[14] - (float)m_originPosition.Get(3, 2);
+		sceneMesh->m_local_transform[12] = sceneMesh->m_local_transform[12] - (float)m_originPosition.Get(3, 0);
+		sceneMesh->m_local_transform[13] = sceneMesh->m_local_transform[13] - (float)m_originPosition.Get(3, 1);
+		sceneMesh->m_local_transform[14] = sceneMesh->m_local_transform[14] - (float)m_originPosition.Get(3, 2);
 
 		auto it_instance = m_instance_map.find(pMesh);
 		if (it_instance != m_instance_map.end())
@@ -808,18 +818,21 @@ namespace ambergris_fbx {
 			if (first_node)
 			{
 				first_node->m_inst_handle = 1;
-				renderNode->m_inst_handle = 1;
-				renderNode->m_geometries = first_node->m_geometries;
-				m_meshCBFunc(renderNode);
+				sceneMesh->m_inst_handle = 1;
+				sceneMesh->m_geometries = first_node->m_geometries;
 			}
 		}
 		else
 		{
-			_ExtractMesh(*renderNode, pMesh);
-			renderNode->evaluateBoundingBox();
-			m_meshCBFunc(renderNode);
-			m_instance_map.insert(InstanceMap::value_type(pMesh, renderNode->m_handle));
+			_ExtractMesh(*sceneMesh, pMesh);
+			m_instance_map.insert(InstanceMap::value_type(pMesh, sceneMesh->m_handle));
 		}
+		sceneMesh->m_dirty = true;
+		agScene.m_dirty = true;
+		// TODO
+		/*std::thread bboxThread(EvaluateBoundingBox, sceneMesh->m_handle);
+		bboxThread.detach();*/
+		m_meshCBFunc(sceneMesh);
 		
 		return;
 	}
@@ -853,10 +866,23 @@ namespace ambergris_fbx {
 				const FbxFileTexture* lTexture = lProperty.GetSrcObject<FbxFileTexture>(i);
 				if (lTexture)
 				{
-					// TODO
-					entry::setCurrentDir("");
-					output->texture_handle[i] =
-						Singleton<AgRenderResourceManager>::instance().m_textures.append(entry::getAllocator(), entry::getFileReader(), lTexture->GetFileName(), 0);
+					TextureMap::const_iterator it_texture = m_texture_map.find(const_cast<FbxFileTexture*>(lTexture));
+					if (it_texture != m_texture_map.end())
+					{
+						AgTexture* pTexture = dynamic_cast<AgTexture*>(Singleton<AgRenderResourceManager>::instance().m_textures.get(it_texture->second));
+						if (pTexture)
+						{
+							output->texture_handle[i] = pTexture->m_handle;
+						}
+					}
+					else
+					{
+						// TODO
+						entry::setCurrentDir("");
+						output->texture_handle[i] =
+							Singleton<AgRenderResourceManager>::instance().m_textures.append(lTexture->GetFileName(), 0);
+						m_texture_map.insert(make_pair(const_cast<FbxFileTexture*>(lTexture), output->texture_handle[i]));
+					}
 				}
 			}
 		}

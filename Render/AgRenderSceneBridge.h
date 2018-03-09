@@ -19,8 +19,12 @@ namespace ambergris {
 			AgMesh::Geometry	m_geometry;
 			AgRenderNode*		m_pRenderNode;
 		};
+#ifdef USING_TINYSTL
 		typedef  stl::vector<EvaluateNode> EvaluateNodeArr;
-
+#else
+		typedef  std::vector<EvaluateNode> EvaluateNodeArr;
+#endif
+		
 	public:
 		AgRenderBaseEvaluator(EvaluateNodeArr& nodes) : m_evaluate_nodes(nodes){}
 		virtual ~AgRenderBaseEvaluator() {}
@@ -30,5 +34,5 @@ namespace ambergris {
 		EvaluateNodeArr&			m_evaluate_nodes;
 	};
 
-	bool AgRenderSceneBridge(AgRenderer& renderer, const AgSceneDatabase& sceneDB);
+	bool AgRenderSceneBridge();
 }

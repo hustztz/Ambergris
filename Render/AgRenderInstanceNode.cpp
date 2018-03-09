@@ -1,15 +1,23 @@
 #include "AgRenderInstanceNode.h"
 #include "Resource/AgRenderResourceManager.h"
 #include "AgRenderPass.h"
+#include "AgFxSystem.h"
 
 #include <assert.h>
 
 namespace ambergris {
 
+	bgfx::VertexDecl		AgRenderInstanceNode::ms_inst_decl;
+
 	/*virtual*/
 	void AgRenderInstanceNode::destroy()
 	{
 		AgRenderNode::destroy();
+		if (bgfx::isValid(m_instance_db))
+		{
+			bgfx::destroy(m_instance_db);
+			m_instance_db = BGFX_INVALID_HANDLE;
+		}
 	}
 
 	/*virtual*/
@@ -20,10 +28,6 @@ namespace ambergris {
 		const uint8_t* vertBuf, uint32_t vertSize,
 		const uint16_t* indexBuf, uint32_t indexSize)
 	{
-		assert(m_items.empty());
-		if (!m_items.empty())
-			return false;
-
 		return AgRenderNode::appendGeometry(
 			nullptr,
 			nullptr,//TODO
@@ -58,55 +62,85 @@ namespace ambergris {
 		if (0 == numInstances)
 			return false;
 
-		if (numInstances != bgfx::getAvailInstanceDataBuffer(numInstances, m_stride))
+		/*if (numInstances != bgfx::getAvailInstanceDataBuffer(numInstances, m_stride * sizeof(float)))
 			return false;
 
-		bgfx::allocInstanceDataBuffer(&m_instance_db, numInstances, m_stride);
-		return (0 == memcpy_s(m_instance_db.data, numInstances * m_stride, m_instance_buffer.GetData(), m_instance_buffer.GetSize()));
+		bgfx::allocInstanceDataBuffer(&m_instance_db, numInstances, m_stride * sizeof(float));
+		return (0 == memcpy_s(m_instance_db.data, numInstances * m_stride * sizeof(float), m_instance_buffer.GetData(), m_instance_buffer.GetSize() * sizeof(float)));
+		float* data = (float*)m_instance_db.data;
+		for (int i = 0; i < numInstances * m_stride; i++)
+		{
+			*data = *(m_instance_buffer.GetData() + i);
+			data = data + 1;
+		}
+		return true;*/
+
+		if (!bgfx::isValid(m_instance_db))
+			m_instance_db = bgfx::createDynamicVertexBuffer(numInstances, ms_inst_decl);
+
+		const bgfx::Memory* mem = bgfx::makeRef(m_instance_buffer.GetData(), m_instance_buffer.GetSize() * sizeof(float));
+		bgfx::updateDynamicVertexBuffer(m_instance_db, 0, mem);
+		return bgfx::isValid(m_instance_db);
 	}
 
 	/*virtual*/
-	void AgRenderInstanceNode::draw(bgfx::ViewId view,
-		AgShader::Handle shaderHandle,
-		uint64_t state,
-		bool inOcclusionQuery /*= false*/,
-		bool needOcclusionCondition /*= false*/)
+	void AgRenderInstanceNode::draw(bgfx::ViewId view, AgFxSystem* pFxSystem, bool inOcclusionQuery)
 	{
-		if (m_items.empty())
+		if (!bgfx::isValid(m_item.m_vbh) || !bgfx::isValid(m_item.m_ibh))
 			return;
 
-		const AgShader* shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(shaderHandle + AgShader::SHADER_INSTANCE_OFFSET);
-		if (!shader)
+		const uint32_t numInstances = m_instance_buffer.GetSize() / m_stride;
+		if (0 == numInstances)
 			return;
 
-		_SubmitTexture(shader);
-
-		// Update Uniforms
-		if (AgRenderPass::E_PASS_ID == view)
+		const AgShader* shader = nullptr;
+		uint64_t shaderState = BGFX_STATE_DEFAULT;
+		if (pFxSystem && AgShader::E_COUNT != pFxSystem->getOverrideShader())
 		{
-			// Submit ID pass based on mesh ID
-			float idsF[4];
-			idsF[0] = m_items[0].m_pick_id[0] / 255.0f;
-			idsF[1] = m_items[0].m_pick_id[1] / 255.0f;
-			idsF[2] = m_items[0].m_pick_id[2] / 255.0f;
-			idsF[3] = 1.0f;
-			bgfx::setUniform(shader->m_uniforms[0].uniform_handle, idsF);
+			shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(pFxSystem->getOverrideShader() + AgShader::SHADER_INSTANCE_OFFSET);
+			shaderState = pFxSystem->getOverrideStates();
 		}
 		else
 		{
-			for (uint8_t i = 0; i < AgShader::MAX_UNIFORM_COUNT; ++i)
-			{
-				if (!bgfx::isValid(shader->m_uniforms[i].uniform_handle) || !m_items[0].m_uniformData[i].dirty)
-					continue;
-				bgfx::setUniform(shader->m_uniforms[i].uniform_handle, m_items[0].m_uniformData[i].data);
-				m_items[0].m_uniformData[i].dirty = false;
-			}
+			const AgMaterial* mat = Singleton<AgRenderResourceManager>::instance().m_materials.get(m_material_handle);
+			if (!mat)
+				return;
+
+			shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(mat->getShaderHandle() + AgShader::SHADER_INSTANCE_OFFSET);
+			shaderState = mat->m_state_flags;
 		}
-		
-		bgfx::setState(state);
-		m_items[0].submit();
+
+		if (!shader)
+			return;
+
+		if (AgRenderPass::E_PASS_ID == view && pFxSystem)
+		{
+			// Submit ID pass based on mesh ID
+			float idsF[4];
+			idsF[0] = m_item.m_pick_id[0] / 255.0f;
+			idsF[1] = m_item.m_pick_id[1] / 255.0f;
+			idsF[2] = m_item.m_pick_id[2] / 255.0f;
+			idsF[3] = 1.0f;
+			pFxSystem->setOverrideResource(shader, idsF);
+		}
+		else
+		{
+			if (!pFxSystem || pFxSystem->needTexture())
+				_SubmitTexture(shader);
+
+			if (pFxSystem)
+			{
+				pFxSystem->setOverrideResource(shader, nullptr);
+			}
+			_SubmitUniform(shader, &m_item);
+		}
+
+		bgfx::setState(shaderState);
+		m_item.submit();
 		// Set instance data buffer.
-		bgfx::setInstanceDataBuffer(&m_instance_db);
+		//prepare();
+		//bgfx::setInstanceDataBuffer(&m_instance_db);
+		bgfx::setInstanceDataBuffer(m_instance_db, 0, numInstances);
 		bgfx::submit(view, shader->m_program);
 	}
 
