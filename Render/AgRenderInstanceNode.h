@@ -1,16 +1,16 @@
 #pragma once
-#include "AgRenderNode.h"
+#include "AgRenderSingleNode.h"
 #include "Foundation/TBuffer.h"
 
 namespace ambergris {
 
-	class AgRenderInstanceNode : public AgRenderNode
+	class AgRenderInstanceNode : public AgRenderSingleNode
 	{
 		static const uint16_t TRANSFORM_STRIDE = 64;
 		static const uint16_t TRANSFORM_DATA_STRIDE = 64;
 	public:
 		AgRenderInstanceNode()
-			: AgRenderNode()
+			: AgRenderSingleNode()
 			, m_stride(0)
 			, m_instance_db(BGFX_INVALID_HANDLE)
 		{
@@ -25,15 +25,15 @@ namespace ambergris {
 		}
 
 		virtual void destroy() override;
-		virtual void draw(bgfx::ViewId view, AgFxSystem* pFxSystem, bool inOcclusionQuery) override;
+		virtual void draw(const ViewIdArray& views, AgFxSystem* pFxSystem, bool inOcclusionQuery) override;
 		virtual bool appendGeometry(
 			const float* transform,
 			const uint32_t* pick_id,
 			const bgfx::VertexDecl& decl,
 			const uint8_t* vertBuf, uint32_t vertSize,
 			const uint16_t* indexBuf, uint32_t indexSize) override;
+		virtual bool prepare() override;
 
-		bool prepare();
 		bool appendInstance(const float* data, unsigned int size);
 	private:
 		TBuffer<float>				m_instance_buffer;

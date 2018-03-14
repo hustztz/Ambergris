@@ -17,7 +17,8 @@ namespace ambergris {
 		~AgRenderer();
 		friend class Singleton<AgRenderer>;
 	public:
-		AgRenderPipeline m_pipeline;
-		std::atomic<bool>		m_isEvaluating;
+		AgRenderPipeline	m_pipeline;
+		AgRenderPass		m_viewPass;
+		std::atomic<bool>	m_isEvaluating;
 	};
 }

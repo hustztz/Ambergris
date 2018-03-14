@@ -9,11 +9,11 @@
 namespace ambergris {
 
 	template<typename T>
-	class AgRenderMeshEvaluator : public AgRenderBaseEvaluator
+	class AgRenderSubMeshEvaluator : public AgRenderBaseEvaluator
 	{
 	public:
-		AgRenderMeshEvaluator(EvaluateNodeArr& nodes) : AgRenderBaseEvaluator(nodes)	{}
-		virtual ~AgRenderMeshEvaluator() {}
+		AgRenderSubMeshEvaluator(EvaluateNodeArr& nodes) : AgRenderBaseEvaluator(nodes)	{}
+		virtual ~AgRenderSubMeshEvaluator() {}
 
 		virtual bool evaluate(const AgMesh& geomNode) override
 		{
@@ -28,7 +28,7 @@ namespace ambergris {
 				if (!vb || !ib)
 					continue;
 
-				T* renderNode = BX_NEW(entry::getAllocator(), T);
+				std::shared_ptr<T> renderNode(BX_NEW(entry::getAllocator(), T));
 				renderNode->setMaterial(geomNode.m_geometries[i].material_handle);
 				for (uint8_t tex_stage = 0; tex_stage < AgShader::MAX_TEXTURE_SLOT_COUNT; tex_stage ++)
 				{

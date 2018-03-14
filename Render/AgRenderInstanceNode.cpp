@@ -1,7 +1,6 @@
 #include "AgRenderInstanceNode.h"
 #include "Resource/AgRenderResourceManager.h"
-#include "AgRenderPass.h"
-#include "AgFxSystem.h"
+#include "AgHardwarePickingSystem.h"
 
 #include <assert.h>
 
@@ -28,7 +27,7 @@ namespace ambergris {
 		const uint8_t* vertBuf, uint32_t vertSize,
 		const uint16_t* indexBuf, uint32_t indexSize)
 	{
-		return AgRenderNode::appendGeometry(
+		return AgRenderSingleNode::appendGeometry(
 			nullptr,
 			nullptr,//TODO
 			decl,
@@ -52,6 +51,7 @@ namespace ambergris {
 		return true;
 	}
 
+	/*virtual*/
 	bool AgRenderInstanceNode::prepare()
 	{
 		if (0 == m_stride)
@@ -84,7 +84,7 @@ namespace ambergris {
 	}
 
 	/*virtual*/
-	void AgRenderInstanceNode::draw(bgfx::ViewId view, AgFxSystem* pFxSystem, bool inOcclusionQuery)
+	void AgRenderInstanceNode::draw(const ViewIdArray& views, AgFxSystem* pFxSystem, bool inOcclusionQuery)
 	{
 		if (!bgfx::isValid(m_item.m_vbh) || !bgfx::isValid(m_item.m_ibh))
 			return;
@@ -113,7 +113,7 @@ namespace ambergris {
 		if (!shader)
 			return;
 
-		if (AgRenderPass::E_PASS_ID == view && pFxSystem)
+		if (pFxSystem && typeid(*pFxSystem) == typeid(AgHardwarePickingSystem))
 		{
 			// Submit ID pass based on mesh ID
 			float idsF[4];
@@ -141,7 +141,10 @@ namespace ambergris {
 		//prepare();
 		//bgfx::setInstanceDataBuffer(&m_instance_db);
 		bgfx::setInstanceDataBuffer(m_instance_db, 0, numInstances);
-		bgfx::submit(view, shader->m_program);
+		for (ViewIdArray::const_iterator view = views.cbegin(), viewEnd = views.cend(); view != viewEnd; view++)
+		{
+			bgfx::submit(*view, shader->m_program, 0, view != viewEnd - 1);
+		}
 	}
 
 }

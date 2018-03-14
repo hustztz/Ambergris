@@ -1,16 +1,17 @@
 #pragma once
+#include "AgRenderItem.h"
 #include "AgRenderNode.h"
 
 namespace ambergris {
 
-	class AgRenderCompoundNode : public AgRenderNode
+	class AgRenderSingleNode : public AgRenderNode
 	{
 	public:
-		AgRenderCompoundNode()
+		AgRenderSingleNode()
 			: AgRenderNode()
 		{
 		}
-		virtual ~AgRenderCompoundNode()
+		virtual ~AgRenderSingleNode()
 		{
 			destroy();
 		}
@@ -25,11 +26,6 @@ namespace ambergris {
 			const uint16_t* indexBuf, uint32_t indexSize) override;
 		virtual const AgRenderItem* findItem(const uint32_t* pick_id) const override;
 	protected:
-#ifdef USING_TINYSTL
-		typedef stl::vector<AgRenderItem> RenderItemArray;
-#else
-		typedef std::vector<AgRenderItem> RenderItemArray;
-#endif
-		RenderItemArray		m_items;
+		AgRenderItem		m_item;
 	};
 }

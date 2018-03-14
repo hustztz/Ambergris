@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Scene/AgMesh.h"
+#include <memory>
 
 namespace ambergris {
 	class AgRenderNode;
@@ -12,12 +13,12 @@ namespace ambergris {
 	public:
 		struct EvaluateNode
 		{
-			EvaluateNode(AgMesh::Geometry geometry, AgRenderNode* renderNode)
+			EvaluateNode(AgMesh::Geometry geometry, std::shared_ptr<AgRenderNode> renderNode)
 				: m_geometry(geometry), m_pRenderNode(renderNode) {}
 			~EvaluateNode(){}
 
 			AgMesh::Geometry	m_geometry;
-			AgRenderNode*		m_pRenderNode;
+			std::shared_ptr<AgRenderNode>	m_pRenderNode;
 		};
 #ifdef USING_TINYSTL
 		typedef  stl::vector<EvaluateNode> EvaluateNodeArr;

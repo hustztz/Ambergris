@@ -9,6 +9,7 @@
 namespace stl = tinystl;
 #else
 #include <vector>
+#include <memory>
 #endif
 
 namespace ambergris {
@@ -22,28 +23,46 @@ namespace ambergris {
 		virtual void destroy() {
 			for (Resources::iterator itm = m_resource_arr.begin(); itm != m_resource_arr.end(); ++ itm)
 			{
-				T* pItm = *itm;
-				if (pItm)
-					delete pItm;
+				itm->reset();
 			}
 			m_resource_arr.clear();
 		}
+
+		AgResource::Handle append(std::shared_ptr<T> res)
+		{
+			if (!res)
+				return AgResource::kInvalidHandle;
+
+			if (AgResource::kInvalidHandle != res->m_handle)
+			{
+				if (res.get() == get(res->m_handle))
+					return res->m_handle;
+			}
+
+			res->m_handle = (AgResource::Handle)getSize();
+			//std::lock_guard<std::mutex> lck(m_mutex);
+			m_resource_arr.push_back(res);
+			res->m_dirty = true;
+			return res->m_handle;
+		}
+
 		template<typename CT>
 		T* allocate(bx::AllocatorI* allocator) {
-			T* res = (T*)BX_NEW(allocator, CT);
+			std::shared_ptr<T> res((T*)BX_NEW(allocator, CT));
 			if (!res)
 				return nullptr;
 
 			if (AgResource::kInvalidHandle != res->m_handle)
 			{
-				if(res == get(res->m_handle))
-					return res;
+				if(res.get() == get(res->m_handle))
+					return res.get();
 			}
 			
 			res->m_handle = (AgResource::Handle)getSize();
 			//std::lock_guard<std::mutex> lck(m_mutex);
 			m_resource_arr.push_back(res);
-			return res;
+			res->m_dirty = true;
+			return res.get();
 		}
 		/*template<>
 		T* allocate<T>(bx::AllocatorI* allocator) {
@@ -54,20 +73,20 @@ namespace ambergris {
 		const T* get(AgResource::Handle id) const {
 			//std::lock_guard<std::mutex> lck(m_mutex);
 			if (id >= 0 && id < getSize())
-				return m_resource_arr[id];
+				return m_resource_arr[id].get();
 			return nullptr;
 		}
 		T* get(AgResource::Handle id) {
 			//std::lock_guard<std::mutex> lck(m_mutex);
 			if (id >= 0 && id < getSize())
-				return m_resource_arr[id];
+				return m_resource_arr[id].get();
 			return nullptr;
 		}
 	protected:
 #ifdef USING_TINYSTL
 		typedef stl::vector<T*> Resources;
 #else
-		typedef std::vector<T*> Resources;
+		typedef std::vector<std::shared_ptr<T>> Resources;
 #endif
 		Resources		m_resource_arr;
 		//mutable std::mutex		m_mutex;

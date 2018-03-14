@@ -18,7 +18,7 @@ namespace ambergris {
 		virtual AgShader::Handle getOverrideShader() const override { return AgShader::E_PICKING_SHADER; }
 		virtual uint64_t getOverrideStates() const override { return BGFX_STATE_DEFAULT; }
 
-		void update(bgfx::ViewId view_pass, float* invViewProj, float mouseXNDC, float mouseYNDC, float fov);
+		void updateView(bgfx::ViewId view_pass, float* invViewProj, float mouseXNDC, float mouseYNDC, float fov, float nearFrusm, float farFrusm);
 		uint8_t acquireResult(bool isSinglePick = true);
 		uint32_t readBlit(bgfx::ViewId view_pass);
 		bgfx::TextureHandle getFBTexture() const { return m_pickingRT; }

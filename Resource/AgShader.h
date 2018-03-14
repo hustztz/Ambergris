@@ -70,9 +70,9 @@ namespace ambergris {
 			return size;
 		}
 
-		static const int MAX_TEXTURE_SLOT_COUNT = 8;
+		static const int MAX_TEXTURE_SLOT_COUNT = 4;
 		TextureSlot				m_texture_slots[MAX_TEXTURE_SLOT_COUNT];
-		static const int MAX_UNIFORM_COUNT = 16;
+		static const int MAX_UNIFORM_COUNT = 12;
 		UniformSlot				m_uniforms[MAX_UNIFORM_COUNT];
 		bgfx::ProgramHandle		m_program;
 	};

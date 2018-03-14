@@ -225,6 +225,15 @@ namespace ambergris {
 		bx::mtxLookAt(_viewMtx, m_eye.curr, m_target.curr, m_up);
 	}
 
+	void AgCamera::getBackViewMtx(float* _viewMtx)
+	{
+		float eye[3];
+		eye[0] = - m_eye.curr[0];
+		eye[1] = m_eye.curr[1];
+		eye[2] = m_eye.curr[2];
+		bx::mtxLookAt(_viewMtx, eye, m_target.curr, m_up);
+	}
+
 	void AgCamera::setPosition(const float* _pos)
 	{
 		bx::memCopy(m_eye.curr, _pos, sizeof(float) * 3);

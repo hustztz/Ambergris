@@ -15,6 +15,9 @@
 
 using namespace ambergris;
 
+#define FAR_VIEW_CLIP 10000.0f
+#define NEAR_VIEW_CLIP 0.1f
+
 namespace
 {
 
@@ -153,11 +156,15 @@ public:
 			bgfx::dbgTextPrintf(0, 1, 0x0f, "Failed to initialize resource.");
 		}
 		Singleton<AgRenderer>::instance().m_pipeline.reset();
+		Singleton<AgRenderer>::instance().m_viewPass.m_width = m_width;
+		Singleton<AgRenderer>::instance().m_viewPass.m_height = m_height;
+		Singleton<AgRenderer>::instance().m_viewPass.init(AgRenderPass::E_VIEW_MAIN);
 
 		m_timeOffset = bx::getHPCounter();
 		m_bOcclusionQuery = false;
 		m_bSelection = false;
 		m_bSky = false;
+		m_secondViewer = false;
 
 		imguiCreate();
 	}
@@ -237,8 +244,17 @@ public:
 			ImGui::SliderFloat("Time scale", &m_timeScale, 0.0f, 1.0f);
 			ImGui::SliderFloat("Time", &m_time, 0.0f, 24.0f);
 			
-			static float distance = 1.0f;
-			ImGui::SliderFloat("Distance", &distance, 1.0f, 10.0f);
+			ImGui::Checkbox("Aux Viewer", &m_secondViewer);
+			if (m_secondViewer)
+			{
+				Singleton<AgRenderer>::instance().m_viewPass.init(AgRenderPass::E_VIEW_SECOND);
+				Singleton<AgRenderer>::instance().m_viewPass.init(AgRenderPass::E_OCCLUSION_VIEW_SECOND);
+			}
+			else
+			{
+				Singleton<AgRenderer>::instance().m_viewPass.m_pass_state[AgRenderPass::E_VIEW_SECOND].isValid = false;
+				Singleton<AgRenderer>::instance().m_viewPass.m_pass_state[AgRenderPass::E_OCCLUSION_VIEW_SECOND].isValid = false;
+			}
 
 			ImGui::End();
 
@@ -290,10 +306,14 @@ public:
 				m_camera.getViewMtx(view);
 
 				float proj[16];
-				bx::mtxProj(proj, 60.0f, float(m_width) / float(m_height), 0.1f, 10000.0f, true);// bgfx::getCaps()->homogeneousDepth);
-				bgfx::setViewTransform(0, view, proj);
+				bx::mtxProj(proj, 60.0f, float(m_width) / float(m_height), NEAR_VIEW_CLIP, FAR_VIEW_CLIP, true);// bgfx::getCaps()->homogeneousDepth);
+				bgfx::setViewTransform(AgRenderPass::E_VIEW_MAIN, view, proj);
 
-				if (m_mouseState.m_buttons[entry::MouseButton::Left])
+				float backView[16];
+				m_camera.getBackViewMtx(backView);
+				bgfx::setViewTransform(AgRenderPass::E_VIEW_SECOND, backView, proj);
+
+				if (m_mouseState.m_click)
 				{
 					// Set up picking pass
 					float viewProj[16];
@@ -306,7 +326,7 @@ public:
 					float mouseXNDC = (m_mouseState.m_mx / (float)m_width) * 2.0f - 1.0f;
 					float mouseYNDC = ((m_height - m_mouseState.m_my) / (float)m_height) * 2.0f - 1.0f;
 
-					Singleton<AgRenderer>::instance().m_pipeline.updatePickingInfo(invViewProj, mouseXNDC, mouseYNDC, 60);
+					Singleton<AgRenderer>::instance().m_pipeline.updatePickingView(invViewProj, mouseXNDC, mouseYNDC, 3.0f, NEAR_VIEW_CLIP, FAR_VIEW_CLIP);
 				}
 			}
 			Singleton<AgRenderer>::instance().m_pipeline.updateTime(m_time);
@@ -370,6 +390,7 @@ public:
 	bool m_bSelection;
 	bool m_bSky;
 	bool m_bOcclusionQuery;
+	bool m_secondViewer;
 };
 
 } // namespace

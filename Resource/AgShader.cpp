@@ -4,6 +4,14 @@
 
 #include <bx/readerwriter.h>
 
+#define AMBERGRIS_TEXTURE_STATE_FILTER (0            \
+			| BGFX_TEXTURE_U_CLAMP       \
+			| BGFX_TEXTURE_V_CLAMP     \
+			| BGFX_TEXTURE_W_CLAMP     \
+			| BGFX_TEXTURE_MIN_POINT     \
+			| BGFX_TEXTURE_MIP_POINT     \
+			| BGFX_TEXTURE_MAG_POINT     \
+			)
 
 namespace ambergris {
 
@@ -24,6 +32,7 @@ namespace ambergris {
 				{
 					shader->m_uniforms[0].uniform_handle = bgfx::createUniform("u_lightDir", bgfx::UniformType::Vec4);
 					shader->m_texture_slots[0].uniform_handle = bgfx::createUniform("s_texColor", bgfx::UniformType::Int1);
+					shader->m_texture_slots[0].texture_state = AMBERGRIS_TEXTURE_STATE_FILTER;
 				}
 				else
 				{
@@ -39,6 +48,7 @@ namespace ambergris {
 				if (bgfx::isValid(shader->m_program))
 				{
 					shader->m_texture_slots[0].uniform_handle = bgfx::createUniform("s_texColor", bgfx::UniformType::Int1);
+					shader->m_texture_slots[0].texture_state = AMBERGRIS_TEXTURE_STATE_FILTER;
 					shader->m_texture_slots[1].uniform_handle = bgfx::createUniform("s_texLightmap", bgfx::UniformType::Int1);
 					shader->m_uniforms[0].uniform_handle = bgfx::createUniform("u_sunDirection", bgfx::UniformType::Vec4);
 					shader->m_uniforms[1].uniform_handle = bgfx::createUniform("u_sunLuminance", bgfx::UniformType::Vec4);
@@ -68,6 +78,7 @@ namespace ambergris {
 				{
 					shader->m_uniforms[0].uniform_handle = bgfx::createUniform("u_lightDir", bgfx::UniformType::Vec4);
 					shader->m_texture_slots[0].uniform_handle = bgfx::createUniform("s_texColor", bgfx::UniformType::Int1);
+					shader->m_texture_slots[0].texture_state = AMBERGRIS_TEXTURE_STATE_FILTER;
 				}
 				else
 				{
@@ -83,6 +94,7 @@ namespace ambergris {
 				if (bgfx::isValid(shader->m_program))
 				{
 					shader->m_texture_slots[0].uniform_handle = bgfx::createUniform("s_texColor", bgfx::UniformType::Int1);
+					shader->m_texture_slots[0].texture_state = AMBERGRIS_TEXTURE_STATE_FILTER;
 					shader->m_texture_slots[1].uniform_handle = bgfx::createUniform("s_texLightmap", bgfx::UniformType::Int1);
 					shader->m_uniforms[0].uniform_handle = bgfx::createUniform("u_sunDirection", bgfx::UniformType::Vec4);
 					shader->m_uniforms[1].uniform_handle = bgfx::createUniform("u_sunLuminance", bgfx::UniformType::Vec4);

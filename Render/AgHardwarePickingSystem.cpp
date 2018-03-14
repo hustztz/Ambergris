@@ -101,7 +101,12 @@ namespace ambergris {
 		bgfx::setUniform(shader->m_uniforms[0].uniform_handle, data);
 	}
 
-	void AgHardwarePickingSystem::update(bgfx::ViewId view_pass, float* invViewProj, float mouseXNDC, float mouseYNDC, float fov)
+	void AgHardwarePickingSystem::updateView(
+		bgfx::ViewId view_pass,
+		float* invViewProj,
+		float mouseXNDC, float mouseYNDC,
+		float fov,
+		float nearFrusm, float farFrusm)
 	{
 		bgfx::setViewFrameBuffer(view_pass, m_pickingFB);
 
@@ -119,7 +124,7 @@ namespace ambergris {
 
 		// Tight FOV is best for picking
 		float pickProj[16];
-		bx::mtxProj(pickProj, fov, 1, 0.01f, 10000.0f, m_homogeneousDepth);
+		bx::mtxProj(pickProj, fov, 1, nearFrusm, farFrusm, m_homogeneousDepth);
 
 		// View rect and transforms for picking pass
 		bgfx::setViewRect(view_pass, 0, 0, ID_DIM, ID_DIM);
@@ -179,6 +184,7 @@ namespace ambergris {
 			return 0;
 
 		AgSceneDatabase& scene = Singleton<AgSceneDatabase>::instance();
+		scene.m_select_result.clear();
 		if (isSinglePick)
 		{
 			AgSceneDatabase::SelectMap::const_iterator iter = scene.m_select_id_map.find(maxAmount.second);

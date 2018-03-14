@@ -12,21 +12,21 @@ namespace ambergris {
 	public:
 		struct UniformData
 		{
-			UniformData() : data(nullptr), dirty(false) {}
+			UniformData() : data(nullptr)/*, dirty(false)*/ {}
 			UniformData& operator= (const UniformData& other) {
 				this->type = other.type;
 				this->data = other.data;
-				this->dirty = false;//atomic has no operator= function.
+				//this->dirty = false;//atomic has no operator= function.
 				return *this;
 			}
 			UniformData(const UniformData& other) {
 				this->type = other.type;
 				this->data = other.data;
-				this->dirty = false;//atomic has no copy construction function.
+				//this->dirty = false;//atomic has no copy construction function.
 			}
 			bgfx::UniformType::Enum type;
 			void*					data;
-			std::atomic<bool>		dirty;
+			//std::atomic<bool>		dirty;
 		};
 	public:
 		AgRenderItem();
@@ -51,8 +51,10 @@ namespace ambergris {
 
 	private:
 		friend class AgRenderNode;
+		friend class AgRenderSingleNode;
 		friend class AgRenderInstanceNode;
 		friend class AgRenderCompoundNode;
+		friend class AgRenderProxyNode;
 
 		bgfx::OcclusionQueryHandle	m_oqh;
 		bgfx::VertexBufferHandle	m_vbh;

@@ -8,6 +8,7 @@ namespace ambergris {
 
 	AgRenderer::AgRenderer()
 		: m_isEvaluating(false)
+		, m_pipeline(m_viewPass)
 	{
 	}
 

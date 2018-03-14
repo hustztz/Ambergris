@@ -24,6 +24,7 @@ namespace ambergris {
 		void update(float _dt);
 
 		void getViewMtx(float* _viewMtx);
+		void getBackViewMtx(float* _viewMtx);
 		void setPosition(const float* _pos);
 		void getPosition(float* _pos) const;
 		void setTarget(const float* _at);

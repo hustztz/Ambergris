@@ -15,20 +15,6 @@ namespace ambergris {
 		AgResourcePool<AgRenderNode>::destroy();
 	}
 
-	AgRenderNode::Handle AgRenderQueue::append(AgRenderNode* renderNode)
-	{
-		if (AgResource::kInvalidHandle != renderNode->m_handle)
-		{
-			if (renderNode == get(renderNode->m_handle))
-				return renderNode->m_handle;
-		}
-
-		renderNode->m_handle = (AgResource::Handle)getSize();
-		m_resource_arr.push_back(renderNode);
-		renderNode->m_dirty = true;
-		return renderNode->m_handle;
-	}
-
 	void AgRenderQueueManager::destroy()
 	{
 		for (int i = 0; i < E_TYPE_COUNT; i++)
@@ -37,7 +23,7 @@ namespace ambergris {
 		}
 	}
 
-	AgRenderNode::Handle AgRenderQueueManager::appendNode(AgRenderNode* renderNode)
+	AgRenderNode::Handle AgRenderQueueManager::appendNode(std::shared_ptr<AgRenderNode> renderNode)
 	{
 		if (!renderNode)
 			return AgRenderNode::kInvalidHandle;

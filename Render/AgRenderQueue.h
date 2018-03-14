@@ -7,7 +7,6 @@ namespace ambergris {
 	{
 	public:
 		virtual void destroy() override;
-		AgRenderNode::Handle append(AgRenderNode* renderNode);
 	};
 
 	struct AgRenderQueueManager
@@ -27,7 +26,7 @@ namespace ambergris {
 		}
 
 		void destroy();
-		AgRenderNode::Handle appendNode(AgRenderNode* renderNode);
+		AgRenderNode::Handle appendNode(std::shared_ptr<AgRenderNode> renderNode);
 		
 		AgRenderQueue m_queues[E_TYPE_COUNT];
 	};

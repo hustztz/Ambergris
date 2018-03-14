@@ -1,7 +1,7 @@
 #include "AgRenderCompoundNode.h"
 #include "Resource/AgRenderResourceManager.h"
-#include "AgRenderPass.h"
-#include "AgFxSystem.h"
+#include "AgRenderItem.h"
+#include "AgHardwarePickingSystem.h"
 
 #include <assert.h>
 
@@ -49,12 +49,9 @@ namespace ambergris {
 	}
 
 	/*virtual*/
-	void AgRenderCompoundNode::draw(bgfx::ViewId view, AgFxSystem* pFxSystem, bool inOcclusionQuery)
+	void AgRenderCompoundNode::draw(const ViewIdArray& views, AgFxSystem* pFxSystem, bool inOcclusionQuery)
 	{
 		if (m_items.empty())
-			return;
-
-		if (!bgfx::isValid(m_item.m_vbh) || !bgfx::isValid(m_item.m_ibh))
 			return;
 
 		const AgShader* shader = nullptr;
@@ -77,7 +74,7 @@ namespace ambergris {
 		if (!shader)
 			return;
 
-		if (AgRenderPass::E_PASS_ID != view)
+		if (pFxSystem && typeid(*pFxSystem) != typeid(AgHardwarePickingSystem))
 		{
 			if (!pFxSystem || pFxSystem->needTexture())
 				_SubmitTexture(shader);
@@ -93,7 +90,7 @@ namespace ambergris {
 		bgfx::ProgramHandle progHandle = shader->m_program;
 		for (AgRenderCompoundNode::RenderItemArray::iterator it = m_items.begin(), itEnd = m_items.end(); it != itEnd; ++it)
 		{
-			if (AgRenderPass::E_PASS_ID == view)
+			if (pFxSystem && typeid(*pFxSystem) == typeid(AgHardwarePickingSystem))
 			{
 				// Submit ID pass based on mesh ID
 				float idsF[4];
@@ -108,20 +105,42 @@ namespace ambergris {
 				_SubmitUniform(shader, &*it);
 			}
 			it->submit();
-			if (AgShader::E_SIMPLE_SHADER == pFxSystem->getOverrideShader() && bgfx::isValid(m_item.m_oqh))
+			if (AgShader::E_SIMPLE_SHADER == pFxSystem->getOverrideShader() && bgfx::isValid(it->m_oqh))
 			{
-				bgfx::setCondition(m_item.m_oqh, true);
-				bgfx::submit(view, progHandle);
+				for (ViewIdArray::const_iterator view = views.cbegin(), viewEnd = views.cend(); view != viewEnd; view++)
+				{
+					bgfx::setCondition(it->m_oqh, true);//TODO
+					bgfx::submit(*view, progHandle, 0 , it != itEnd - 1 && view != viewEnd - 1);
+				}
 			}
-			else if (inOcclusionQuery && bgfx::isValid(m_item.m_oqh))
+			else if (inOcclusionQuery && bgfx::isValid(it->m_oqh))
 			{
-				bgfx::submit(view, progHandle, m_item.m_oqh);
+				for (ViewIdArray::const_iterator view = views.cbegin(), viewEnd = views.cend(); view != viewEnd; view++)
+				{
+					bgfx::submit(*view, progHandle, it->m_oqh, 0, it != itEnd - 1 && view != viewEnd - 1);
+				}
 			}
 			else
 			{
-				bgfx::submit(view, progHandle);
+				for (ViewIdArray::const_iterator view = views.cbegin(), viewEnd = views.cend(); view != viewEnd; view++)
+				{
+					bgfx::submit(*view, progHandle, 0, it != itEnd - 1 && view != viewEnd - 1);
+				}
 			}
 		}
 	}
 
+	/*virtual*/ const AgRenderItem* AgRenderCompoundNode::findItem(const uint32_t* pick_id) const
+	{
+		for (AgRenderCompoundNode::RenderItemArray::const_iterator it = m_items.cbegin(), itEnd = m_items.cend(); it != itEnd; ++it)
+		{
+			if (it->m_pick_id[0] == pick_id[0] &&
+				it->m_pick_id[1] == pick_id[1] &&
+				it->m_pick_id[2] == pick_id[2])
+			{
+				return &*it;
+			}
+		}
+		return nullptr;
+	}
 }

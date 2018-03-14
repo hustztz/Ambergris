@@ -716,6 +716,7 @@ restart:
 							{
 								_mouse->m_buttons[mouse->m_button] = mouse->m_down;
 							}
+							_mouse->m_click = mouse->m_down;
 						}
 					}
 					break;
