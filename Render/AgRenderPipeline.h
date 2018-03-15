@@ -1,7 +1,8 @@
 #pragma once
 
-#include "AgRenderQueue.h"
-#include "AgRenderPass.h"
+#include <bgfx/bgfx.h>
+
+#include <vector>
 
 namespace ambergris {
 
@@ -9,34 +10,39 @@ namespace ambergris {
 	class AgFxSystem;
 	class AgOcclusionSystem;
 	class AgWireframeSystem;
+	struct AgRenderQueueManager;
+
+	typedef std::vector<bgfx::ViewId> ViewIdArray;
 
 	class AgRenderPipeline
 	{
 	public:
 		void destroy();
-		void reset();
-		void run();
-		void updatePickingView(float* invViewProj, float mouseXNDC, float mouseYNDC, float fov, float nearFrusm, float farFrusm);
+		uint32_t run(const AgRenderQueueManager& renderQueues,
+			const ViewIdArray& mainView,
+			const ViewIdArray& allViews,
+			bgfx::ViewId		pickView,
+			const ViewIdArray& occlusionViews);
+
+		uint8_t updatePickingResult(bool isSinglePick = true);
+		uint32_t readPickingBlit(bgfx::ViewId view_pass);
+		void updatePickingView(bgfx::ViewId view_pass, float* invViewProj, float mouseXNDC, float mouseYNDC, float fov, float nearFrusm, float farFrusm);
+
+		void updateTime(float time);
 		void enableOcclusionQuery(bool enable);
 		void enableHardwarePicking(bool enable);
 		void enableSkySystem(bool enable);
-		void updateTime(float time);
-		AgRenderNode::Handle appendNode(std::shared_ptr<AgRenderNode> renderNode);
 
 		bgfx::TextureHandle getDebugTexture() const;
 	protected:
-		AgRenderPipeline(AgRenderPass&	pass);
+		AgRenderPipeline();
 		~AgRenderPipeline();
 		friend struct AgRenderer;
 	private:
-		AgRenderPass&	m_viewPass;
 		bool			m_pick_drawed;
-		uint32_t		m_pick_reading;
-		uint32_t		m_currFrame;
 		AgHardwarePickingSystem*	m_pPicking;
 		AgFxSystem*				m_fxSystem;
 		AgOcclusionSystem*		m_occlusionSystem;
-		AgRenderQueueManager	m_renderQueueManager;
 		AgWireframeSystem*		m_wireframeSystem;
 	};
 

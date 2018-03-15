@@ -15,7 +15,7 @@ namespace ambergris {
 	struct AgMesh : public AgObject
 	{
 		AgMesh() : AgObject(), m_inst_handle(-1), m_bShadowCaster(false) {
-			bx::RngMwc mwc;  // Random number generator
+			static bx::RngMwc mwc;  // Random number generator
 			m_pick_id[0] = mwc.gen() % 256;
 			m_pick_id[1] = mwc.gen() % 256;
 			m_pick_id[2] = mwc.gen() % 256;

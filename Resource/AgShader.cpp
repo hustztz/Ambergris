@@ -107,7 +107,7 @@ namespace ambergris {
 				}
 				break;
 			case AgShader::E_PICKING_INSTANCE_SHADER:
-				shader->m_program = shaderUtils::loadProgram("vs_pick_instancing", "fs_picking_id");//TODO
+				shader->m_program = shaderUtils::loadProgram("vs_pick_instancing", "fs_picking_id");
 				ret &= (bgfx::isValid(shader->m_program));
 				break;
 			case AgShader::E_SKY:

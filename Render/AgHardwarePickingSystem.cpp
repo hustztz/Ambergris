@@ -140,7 +140,7 @@ namespace ambergris {
 		return bgfx::readTexture(m_blitTex, m_blitData);
 	}
 
-	uint8_t AgHardwarePickingSystem::acquireResult(bool isSinglePick /*= true*/)
+	uint8_t AgHardwarePickingSystem::acquireResult(bool isSinglePick)
 	{
 		std::map<uint32_t, uint32_t> ids;  // This contains all the IDs found in the buffer
 		std::pair<uint32_t, uint32_t> maxAmount = std::make_pair<uint32_t, uint32_t>(0, 0);
@@ -180,11 +180,12 @@ namespace ambergris {
 			}
 		}
 
+		AgSceneDatabase& scene = Singleton<AgSceneDatabase>::instance();
+		scene.m_select_result.clear();
+
 		if (0 == maxAmount.first)
 			return 0;
 
-		AgSceneDatabase& scene = Singleton<AgSceneDatabase>::instance();
-		scene.m_select_result.clear();
 		if (isSinglePick)
 		{
 			AgSceneDatabase::SelectMap::const_iterator iter = scene.m_select_id_map.find(maxAmount.second);

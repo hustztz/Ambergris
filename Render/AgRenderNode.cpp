@@ -33,7 +33,7 @@ namespace ambergris {
 		m_texture[slot] = tex_handle;
 	}
 
-	void AgRenderNode::_SubmitTexture(const AgShader* shader)
+	void AgRenderNode::_SubmitTexture(const AgShader* shader) const
 	{
 		if (!shader)
 			return;
@@ -51,7 +51,7 @@ namespace ambergris {
 		}
 	}
 
-	void AgRenderNode::_SubmitUniform(const AgShader* shader, const AgRenderItem*	item)
+	void AgRenderNode::_SubmitUniform(const AgShader* shader, const AgRenderItem*	item) const
 	{
 		if (!shader || !item)
 			return;

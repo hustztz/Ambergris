@@ -34,7 +34,7 @@ namespace ambergris {
 	}
 
 	/*virtual*/
-	void AgRenderSingleNode::draw(const ViewIdArray& views, AgFxSystem* pFxSystem, bool inOcclusionQuery)
+	void AgRenderSingleNode::draw(const ViewIdArray& views, AgFxSystem* pFxSystem, bool inOcclusionQuery) const
 	{
 		if (!bgfx::isValid(m_item.m_vbh) || !bgfx::isValid(m_item.m_ibh))
 			return;
@@ -111,11 +111,9 @@ namespace ambergris {
 	}
 
 	/*virtual*/
-	const AgRenderItem* AgRenderSingleNode::findItem(const uint32_t* pick_id) const
+	const AgRenderItem* AgRenderSingleNode::getItem(uint16_t id) const
 	{
-		if (m_item.m_pick_id[0] == pick_id[0] &&
-			m_item.m_pick_id[1] == pick_id[1] &&
-			m_item.m_pick_id[2] == pick_id[2])
+		if (0 == id)
 		{
 			return &m_item;
 		}

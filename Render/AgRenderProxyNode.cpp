@@ -19,7 +19,7 @@ namespace ambergris {
 	}
 
 	/*virtual*/
-	void AgRenderProxyNode::draw(const ViewIdArray& views, AgFxSystem* pFxSystem, bool inOcclusionQuery)
+	void AgRenderProxyNode::draw(const ViewIdArray& views, AgFxSystem* pFxSystem, bool inOcclusionQuery) const
 	{
 		if (!m_pItem)
 			return;
@@ -58,6 +58,8 @@ namespace ambergris {
 
 		bgfx::setState(shaderState);
 		m_pItem->submit();
+		// Override transform
+		bgfx::setTransform(m_mtx);
 
 		bgfx::ProgramHandle progHandle = shader->m_program;
 
@@ -86,10 +88,25 @@ namespace ambergris {
 	}
 
 	/*virtual*/
-	const AgRenderItem* AgRenderProxyNode::findItem(const uint32_t* pick_id) const
+	const AgRenderItem* AgRenderProxyNode::getItem(uint16_t id) const
 	{
+		if (0 == id)
+		{
+			return m_pItem;
+		}
 		return nullptr;
 	}
 
-	
+	void AgRenderProxyNode::setTransform(const float* mtx)
+	{
+		if (mtx)
+			memcpy_s(m_mtx, 16 * sizeof(float), mtx, 16 * sizeof(float));
+		else
+		{
+			m_mtx[0] = m_mtx[5] = m_mtx[9] = m_mtx[15] = 1.0f;
+			m_mtx[1] = m_mtx[2] = m_mtx[3] = m_mtx[4] =
+				m_mtx[6] = m_mtx[7] = m_mtx[8] = m_mtx[10] =
+				m_mtx[11] = m_mtx[12] = m_mtx[13] = m_mtx[14] = 0.0f;
+		}
+	}
 }

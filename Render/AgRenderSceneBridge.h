@@ -13,12 +13,15 @@ namespace ambergris {
 	public:
 		struct EvaluateNode
 		{
-			EvaluateNode(AgMesh::Geometry geometry, std::shared_ptr<AgRenderNode> renderNode)
-				: m_geometry(geometry), m_pRenderNode(renderNode) {}
+			EvaluateNode(AgMesh::Geometry geometry, std::shared_ptr<AgRenderNode> renderNode, AgObject::Handle objectHandle)
+				: m_geometry(geometry), m_pRenderNode(renderNode) {
+				m_objectHandles.push_back(objectHandle);
+			}
 			~EvaluateNode(){}
 
 			AgMesh::Geometry	m_geometry;
 			std::shared_ptr<AgRenderNode>	m_pRenderNode;
+			std::vector<AgObject::Handle>	m_objectHandles;
 		};
 #ifdef USING_TINYSTL
 		typedef  stl::vector<EvaluateNode> EvaluateNodeArr;

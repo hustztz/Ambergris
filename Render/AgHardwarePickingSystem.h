@@ -19,10 +19,11 @@ namespace ambergris {
 		virtual uint64_t getOverrideStates() const override { return BGFX_STATE_DEFAULT; }
 
 		void updateView(bgfx::ViewId view_pass, float* invViewProj, float mouseXNDC, float mouseYNDC, float fov, float nearFrusm, float farFrusm);
-		uint8_t acquireResult(bool isSinglePick = true);
+		uint8_t acquireResult(bool isSinglePick);
 		uint32_t readBlit(bgfx::ViewId view_pass);
 		bgfx::TextureHandle getFBTexture() const { return m_pickingRT; }
 		bool isPicked() const { return m_isPicked; }
+		void endPick() { m_isPicked = false; }
 	protected:
 	private:
 		bgfx::TextureHandle m_pickingRT;

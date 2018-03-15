@@ -84,7 +84,7 @@ namespace ambergris {
 	}
 
 	/*virtual*/
-	void AgRenderInstanceNode::draw(const ViewIdArray& views, AgFxSystem* pFxSystem, bool inOcclusionQuery)
+	void AgRenderInstanceNode::draw(const ViewIdArray& views, AgFxSystem* pFxSystem, bool inOcclusionQuery) const
 	{
 		if (!bgfx::isValid(m_item.m_vbh) || !bgfx::isValid(m_item.m_ibh))
 			return;
@@ -115,13 +115,10 @@ namespace ambergris {
 
 		if (pFxSystem && typeid(*pFxSystem) == typeid(AgHardwarePickingSystem))
 		{
-			// Submit ID pass based on mesh ID
-			float idsF[4];
-			idsF[0] = m_item.m_pick_id[0] / 255.0f;
-			idsF[1] = m_item.m_pick_id[1] / 255.0f;
-			idsF[2] = m_item.m_pick_id[2] / 255.0f;
-			idsF[3] = 1.0f;
-			pFxSystem->setOverrideResource(shader, idsF);
+			if (20 != m_stride)
+			{
+				printf("Instance node has no color buffer for picking.\n");
+			}
 		}
 		else
 		{
@@ -135,16 +132,26 @@ namespace ambergris {
 			_SubmitUniform(shader, &m_item);
 		}
 
-		bgfx::setState(shaderState);
-		m_item.submit();
 		// Set instance data buffer.
 		//prepare();
 		//bgfx::setInstanceDataBuffer(&m_instance_db);
 		bgfx::setInstanceDataBuffer(m_instance_db, 0, numInstances);
+
+		bgfx::setState(shaderState);
+		m_item.submit();
 		for (ViewIdArray::const_iterator view = views.cbegin(), viewEnd = views.cend(); view != viewEnd; view++)
 		{
 			bgfx::submit(*view, shader->m_program, 0, view != viewEnd - 1);
 		}
 	}
 
+	/*virtual*/
+	const float* AgRenderInstanceNode::getTransform(uint16_t id) const
+	{
+		uint16_t transformPos = id * m_stride;
+		if(transformPos + 16 >= (uint16_t)m_instance_buffer.GetSize())
+			return nullptr;
+
+		return m_instance_buffer.GetData() + transformPos;
+	}
 }

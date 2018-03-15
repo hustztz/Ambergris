@@ -26,7 +26,6 @@ namespace ambergris {
 		}
 
 		void destroy();
-		AgRenderNode::Handle appendNode(std::shared_ptr<AgRenderNode> renderNode);
 		
 		AgRenderQueue m_queues[E_TYPE_COUNT];
 	};

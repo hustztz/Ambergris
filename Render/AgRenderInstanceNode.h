@@ -25,13 +25,15 @@ namespace ambergris {
 		}
 
 		virtual void destroy() override;
-		virtual void draw(const ViewIdArray& views, AgFxSystem* pFxSystem, bool inOcclusionQuery) override;
+		virtual void draw(const ViewIdArray& views, AgFxSystem* pFxSystem, bool inOcclusionQuery) const override;
 		virtual bool appendGeometry(
 			const float* transform,
 			const uint32_t* pick_id,
 			const bgfx::VertexDecl& decl,
 			const uint8_t* vertBuf, uint32_t vertSize,
 			const uint16_t* indexBuf, uint32_t indexSize) override;
+		virtual const AgRenderItem* getItem(uint16_t id) const override { return &m_item; }
+		virtual const float* getTransform(uint16_t id) const override;
 		virtual bool prepare() override;
 
 		bool appendInstance(const float* data, unsigned int size);
@@ -44,6 +46,7 @@ namespace ambergris {
 		{
 			ms_inst_decl
 				.begin()
+				.add(bgfx::Attrib::TexCoord3, 4, bgfx::AttribType::Float)
 				.add(bgfx::Attrib::TexCoord4, 4, bgfx::AttribType::Float)
 				.add(bgfx::Attrib::TexCoord5, 4, bgfx::AttribType::Float)
 				.add(bgfx::Attrib::TexCoord6, 4, bgfx::AttribType::Float)

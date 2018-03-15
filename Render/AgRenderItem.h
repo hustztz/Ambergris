@@ -49,13 +49,7 @@ namespace ambergris {
 		void _SetVertexBuffer(const bgfx::VertexDecl& decl, const uint8_t* buffer, uint32_t size);
 		void _SetIndexBuffer(const uint16_t* buffer, uint32_t size);
 
-	private:
-		friend class AgRenderNode;
-		friend class AgRenderSingleNode;
-		friend class AgRenderInstanceNode;
-		friend class AgRenderCompoundNode;
-		friend class AgRenderProxyNode;
-
+	public:
 		bgfx::OcclusionQueryHandle	m_oqh;
 		bgfx::VertexBufferHandle	m_vbh;
 		bgfx::IndexBufferHandle		m_ibh;

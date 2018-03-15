@@ -34,10 +34,10 @@ namespace ambergris {
 				}
 				else
 				{
-					bx::RngMwc mwc;  // Random number generator
-					pMesh->m_pick_id[0] = mwc.gen() % 256;
-					pMesh->m_pick_id[1] = mwc.gen() % 256;
-					pMesh->m_pick_id[2] = mwc.gen() % 256;
+					// Re-hash
+					pMesh->m_pick_id[0] = (pMesh->m_pick_id[0] + 1) % 256;
+					pMesh->m_pick_id[1] = (pMesh->m_pick_id[1] + 1) % 256;
+					pMesh->m_pick_id[2] = (pMesh->m_pick_id[2] + 1) % 256;
 					selectID = pMesh->m_pick_id[0] + (pMesh->m_pick_id[1] << 8) + (pMesh->m_pick_id[2] << 16) + (255u << 24);
 #ifdef USING_TINYSTL
 					m_select_id_map.insert(stl::make_pair<uint32_t, AgObject::Handle>(selectID, pMesh->m_handle));

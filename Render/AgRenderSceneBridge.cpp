@@ -34,9 +34,15 @@ namespace ambergris {
 				}
 			}
 
-			static const int stride = 16;
+			static const int stride = 20;
 			float instanceData[stride];
-			ret &= (0 != memcpy_s(instanceData, stride * sizeof(float), mesh->m_global_transform, stride * sizeof(float)));
+			ret &= (0 != memcpy_s(instanceData, 16 * sizeof(float), mesh->m_global_transform, 16 * sizeof(float)));
+			float idsF[4];
+			idsF[0] = mesh->m_pick_id[0] / 255.0f;
+			idsF[1] = mesh->m_pick_id[1] / 255.0f;
+			idsF[2] = mesh->m_pick_id[2] / 255.0f;
+			idsF[3] = 1.0f;
+			ret &= (0 != memcpy_s(instanceData + 16, 4 * sizeof(float), idsF, 4 * sizeof(float)));
 
 			if (evaNodes.empty())
 			{
@@ -61,7 +67,10 @@ namespace ambergris {
 					std::shared_ptr<AgRenderInstanceNode> inst_node =
 						std::dynamic_pointer_cast<AgRenderInstanceNode>(eva_node_arr[*itm].m_pRenderNode);
 					if (inst_node)
+					{
 						ret &= inst_node->appendInstance(instanceData, stride);
+						eva_node_arr[*itm].m_objectHandles.push_back(mesh->m_handle);
+					}
 				}
 			}
 		}
@@ -98,7 +107,7 @@ namespace ambergris {
 			std::shared_ptr<AgRenderNode> pNode = eva_node_arr[i].m_pRenderNode;
 			if (pNode && pNode->prepare())
 			{
-				renderer.m_pipeline.appendNode(pNode);
+				renderer.appendNode(pNode, eva_node_arr[i].m_objectHandles);
 			}
 		}
 		renderer.m_isEvaluating = false;

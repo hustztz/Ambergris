@@ -49,7 +49,7 @@ namespace ambergris {
 	}
 
 	/*virtual*/
-	void AgRenderCompoundNode::draw(const ViewIdArray& views, AgFxSystem* pFxSystem, bool inOcclusionQuery)
+	void AgRenderCompoundNode::draw(const ViewIdArray& views, AgFxSystem* pFxSystem, bool inOcclusionQuery) const
 	{
 		if (m_items.empty())
 			return;
@@ -88,7 +88,7 @@ namespace ambergris {
 		bgfx::setState(shaderState);
 
 		bgfx::ProgramHandle progHandle = shader->m_program;
-		for (AgRenderCompoundNode::RenderItemArray::iterator it = m_items.begin(), itEnd = m_items.end(); it != itEnd; ++it)
+		for (AgRenderCompoundNode::RenderItemArray::const_iterator it = m_items.cbegin(), itEnd = m_items.cend(); it != itEnd; ++it)
 		{
 			if (pFxSystem && typeid(*pFxSystem) == typeid(AgHardwarePickingSystem))
 			{
@@ -130,17 +130,11 @@ namespace ambergris {
 		}
 	}
 
-	/*virtual*/ const AgRenderItem* AgRenderCompoundNode::findItem(const uint32_t* pick_id) const
+	/*virtual*/ const AgRenderItem* AgRenderCompoundNode::getItem(uint16_t id) const
 	{
-		for (AgRenderCompoundNode::RenderItemArray::const_iterator it = m_items.cbegin(), itEnd = m_items.cend(); it != itEnd; ++it)
-		{
-			if (it->m_pick_id[0] == pick_id[0] &&
-				it->m_pick_id[1] == pick_id[1] &&
-				it->m_pick_id[2] == pick_id[2])
-			{
-				return &*it;
-			}
-		}
-		return nullptr;
+		if(id >= m_items.size())
+			return nullptr;
+
+		return &m_items.at(id);
 	}
 }

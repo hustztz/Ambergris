@@ -155,7 +155,7 @@ public:
 		{
 			bgfx::dbgTextPrintf(0, 1, 0x0f, "Failed to initialize resource.");
 		}
-		Singleton<AgRenderer>::instance().m_pipeline.reset();
+		Singleton<AgRenderer>::instance().clearNodes();
 		Singleton<AgRenderer>::instance().m_viewPass.m_width = m_width;
 		Singleton<AgRenderer>::instance().m_viewPass.m_height = m_height;
 		Singleton<AgRenderer>::instance().m_viewPass.init(AgRenderPass::E_VIEW_MAIN);
@@ -173,7 +173,7 @@ public:
 	{
 		imguiDestroy();
 
-		Singleton<AgRenderer>::instance().m_pipeline.destroy();
+		Singleton<AgRenderer>::instance().destroy();
 		Singleton<AgRenderResourceManager>::instance().destroy();
 
 		// Shutdown bgfx.
@@ -211,7 +211,7 @@ public:
 				, 0
 			);
 
-			bgfx::TextureHandle debugTexture = Singleton<AgRenderer>::instance().m_pipeline.getDebugTexture();
+			bgfx::TextureHandle debugTexture = Singleton<AgRenderer>::instance().getDebugTexture();
 			if(bgfx::isValid(debugTexture))
 				ImGui::Image(debugTexture, ImVec2(m_width / 5.0f - 16.0f, m_width / 5.0f - 16.0f));
 
@@ -230,17 +230,17 @@ public:
 			if (occlusionQuerySupported)
 			{
 				ImGui::Checkbox("Occlusion Query", &m_bOcclusionQuery);
-				Singleton<AgRenderer>::instance().m_pipeline.enableOcclusionQuery(occlusionQuerySupported && m_bOcclusionQuery);
+				Singleton<AgRenderer>::instance().enableOcclusionQuery(occlusionQuerySupported && m_bOcclusionQuery);
 			}
 			
 			bool blitSupport = 0 != (caps->supported & BGFX_CAPS_TEXTURE_BLIT);
 			if (blitSupport)
 			{
 				ImGui::Checkbox("Hardware Selection", &m_bSelection);
-				Singleton<AgRenderer>::instance().m_pipeline.enableHardwarePicking(blitSupport && m_bSelection);
+				Singleton<AgRenderer>::instance().enableHardwarePicking(blitSupport && m_bSelection);
 			}
 			ImGui::Checkbox("Sky", &m_bSky);
-			Singleton<AgRenderer>::instance().m_pipeline.enableSkySystem(m_bSky);
+			Singleton<AgRenderer>::instance().enableSkySystem(m_bSky);
 			ImGui::SliderFloat("Time scale", &m_timeScale, 0.0f, 1.0f);
 			ImGui::SliderFloat("Time", &m_time, 0.0f, 24.0f);
 			
@@ -315,6 +315,7 @@ public:
 
 				if (m_mouseState.m_click)
 				{
+					m_mouseState.m_click = false;
 					// Set up picking pass
 					float viewProj[16];
 					bx::mtxMul(viewProj, view, proj);
@@ -326,12 +327,12 @@ public:
 					float mouseXNDC = (m_mouseState.m_mx / (float)m_width) * 2.0f - 1.0f;
 					float mouseYNDC = ((m_height - m_mouseState.m_my) / (float)m_height) * 2.0f - 1.0f;
 
-					Singleton<AgRenderer>::instance().m_pipeline.updatePickingView(invViewProj, mouseXNDC, mouseYNDC, 3.0f, NEAR_VIEW_CLIP, FAR_VIEW_CLIP);
+					Singleton<AgRenderer>::instance().updatePickingView(invViewProj, mouseXNDC, mouseYNDC, 3.0f, NEAR_VIEW_CLIP, FAR_VIEW_CLIP);
 				}
 			}
-			Singleton<AgRenderer>::instance().m_pipeline.updateTime(m_time);
+			Singleton<AgRenderer>::instance().updateTime(m_time);
 			Singleton<AgRenderer>::instance().evaluateScene();
-			Singleton<AgRenderer>::instance().m_pipeline.run();
+			Singleton<AgRenderer>::instance().runPipeline();
 
 			return true;
 		}

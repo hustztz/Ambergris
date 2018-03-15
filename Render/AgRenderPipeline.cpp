@@ -4,25 +4,18 @@
 #include "AgLightingSystem.h"
 #include "AgOcclusionSystem.h"
 #include "AgWireframeSystem.h"
+#include "AgRenderQueue.h"
 #include "Resource/AgRenderResourceManager.h"
-
-#include "AgRenderProxyNode.h"
-#include "Scene/AgSceneDatabase.h"
-#include "BGFX/entry/entry.h" //TODO
 
 namespace ambergris {
 
-	AgRenderPipeline::AgRenderPipeline(AgRenderPass&	pass)
+	AgRenderPipeline::AgRenderPipeline()
 		: m_occlusionSystem(nullptr)
 		, m_pPicking(nullptr)
 		, m_fxSystem(nullptr)
 		, m_wireframeSystem(nullptr)
-		, m_pick_reading(0)
 		, m_pick_drawed(false)
-		, m_currFrame(UINT32_MAX)
-		, m_viewPass(pass)
 	{
-		reset();
 	}
 
 	AgRenderPipeline::~AgRenderPipeline()
@@ -52,25 +45,12 @@ namespace ambergris {
 			delete m_occlusionSystem;
 			m_occlusionSystem = nullptr;
 		}
-		m_renderQueueManager.destroy();
 	}
 
-	void AgRenderPipeline::reset()
-	{
-		m_renderQueueManager.destroy();
-		enableHardwarePicking(false);
-		enableSkySystem(false);
-	}
-
-	AgRenderNode::Handle AgRenderPipeline::appendNode(std::shared_ptr<AgRenderNode> renderNode)
-	{
-		return m_renderQueueManager.appendNode(renderNode);
-	}
-
-	void AgRenderPipeline::updatePickingView(float* invViewProj, float mouseXNDC, float mouseYNDC, float fov, float nearFrusm, float farFrusm)
+	void AgRenderPipeline::updatePickingView(bgfx::ViewId view_pass, float* invViewProj, float mouseXNDC, float mouseYNDC, float fov, float nearFrusm, float farFrusm)
 	{
 		if(m_pPicking)
-			m_pPicking->updateView(AgRenderPass::E_PASS_ID, invViewProj, mouseXNDC, mouseYNDC, fov, nearFrusm, farFrusm);
+			m_pPicking->updateView(view_pass, invViewProj, mouseXNDC, mouseYNDC, fov, nearFrusm, farFrusm);
 	}
 
 	void AgRenderPipeline::enableHardwarePicking(bool enable)
@@ -81,7 +61,6 @@ namespace ambergris {
 			{
 				m_pPicking = new AgHardwarePickingSystem();
 				m_pPicking->init();
-				m_viewPass.init(AgRenderPass::E_PASS_ID);
 			}
 			if (!m_wireframeSystem)
 			{
@@ -101,7 +80,6 @@ namespace ambergris {
 				delete m_wireframeSystem;
 				m_wireframeSystem = nullptr;
 			}
-			m_viewPass.m_pass_state[AgRenderPass::E_PASS_ID].isValid = false;
 		}
 	}
 
@@ -117,9 +95,6 @@ namespace ambergris {
 			{
 				m_occlusionSystem = new AgOcclusionSystem();
 				m_occlusionSystem->init();
-				m_viewPass.init(AgRenderPass::E_OCCLUSION_VIEW_MAIN);
-				/*if()
-					m_viewPass.init(AgRenderPass::E_OCCLUSION_VIEW_SECOND);*///TODO
 			}
 		}
 		else
@@ -133,9 +108,6 @@ namespace ambergris {
 				m_occlusionSystem->destroy();
 				delete m_occlusionSystem;
 				m_occlusionSystem = nullptr;
-				m_viewPass.m_pass_state[AgRenderPass::E_OCCLUSION_VIEW_MAIN].isValid = false;
-				/*if()
-				m_viewPass.m_pass_state[AgRenderPass::E_OCCLUSION_VIEW_SECOND].isValid = false;*///TODO
 			}
 		}
 	}
@@ -212,111 +184,52 @@ namespace ambergris {
 		return m_pPicking->getFBTexture();
 	}
 
-	void AgRenderPipeline::run()
+	uint8_t AgRenderPipeline::updatePickingResult(bool isSinglePick /*= true*/)
 	{
-		m_viewPass.clear();
+		if (!m_pPicking)
+			return 0;
+		return m_pPicking->acquireResult(isSinglePick);
+	}
 
-		if (m_pick_reading == m_currFrame)
-		{
-			m_pick_reading = 0;
-			if (m_pPicking)
-			{
-				uint8_t nPicked = m_pPicking->acquireResult();
-				if (nPicked)
-				{
-					m_renderQueueManager.m_queues[AgRenderQueueManager::E_WIREFRAME].destroy();
-					// TODO: need to build a map to accelerate picking result
-					const AgSceneDatabase& scene = Singleton<AgSceneDatabase>::instance();
-					for (auto iter = scene.m_select_result.cbegin(); iter != scene.m_select_result.cend(); ++ iter)
-					{
-						for (int i = 0; i < AgRenderQueueManager::E_TYPE_COUNT; i++)
-						{
-							if (AgRenderQueueManager::isScene((AgRenderQueueManager::QueueType)i))
-							{
-								for (int j = 0; j < m_renderQueueManager.m_queues[i].getSize(); ++j)
-								{
-									const AgRenderNode* node = m_renderQueueManager.m_queues[i].get(j);
-									if (!node || !node->m_dirty)
-										continue;
-									const AgMesh* pMesh = dynamic_cast<const AgMesh*>(scene.get(*iter));
-									if (!pMesh)
-										continue;
-									const AgRenderItem* pItem = node->findItem(pMesh->m_pick_id);
-									if (pItem)
-									{
-										std::shared_ptr<AgRenderProxyNode> wireframeNode(BX_NEW(entry::getAllocator(), AgRenderProxyNode));
-										if (wireframeNode)
-										{
-											wireframeNode->appendItem(pItem);
-											m_renderQueueManager.m_queues[AgRenderQueueManager::E_WIREFRAME].append(wireframeNode);
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-				else
-				{
-					m_renderQueueManager.m_queues[AgRenderQueueManager::E_WIREFRAME].destroy();
-				}
-			}
-		}
+	uint32_t AgRenderPipeline::readPickingBlit(bgfx::ViewId view_pass)
+	{
+		if (!m_pPicking || !m_pick_drawed)
+			return 0;
+		
+		uint32_t pick_reading = m_pPicking->readBlit(view_pass);
+		m_pPicking->endPick();
+		m_pick_drawed = false;
 
-		ViewIdArray mainView;
-		ViewIdArray allViews;
-		ViewIdArray occlusionViews;
-		for (uint16_t i = 0; i < AgRenderPass::E_PASS_COUNT; i++)
-		{
-			if (!m_viewPass.m_pass_state[i].isValid)
-				continue;
+		return pick_reading;
+	}
 
-			switch (i)
-			{
-			case AgRenderPass::E_VIEW_MAIN:
-				mainView.push_back(i);
-				allViews.push_back(i);
-				break;
-			case AgRenderPass::E_OCCLUSION_VIEW_MAIN:
-			case AgRenderPass::E_OCCLUSION_VIEW_SECOND:
-				occlusionViews.push_back(i);
-				break;
-			case AgRenderPass::E_VIEW_SECOND:
-				allViews.push_back(i);
-				break;
-			default:
-				break;
-			}
-		}
-
+	uint32_t AgRenderPipeline::run(
+		const AgRenderQueueManager& renderQueues,
+		const ViewIdArray& mainView,
+		const ViewIdArray& allViews,
+		bgfx::ViewId		pickView,
+		const ViewIdArray& occlusionViews)
+	{
 		// TODO: multithread
 		for (int i = 0; i < AgRenderQueueManager::E_TYPE_COUNT; i ++)
 		{
 			if (AgRenderQueueManager::isScene((AgRenderQueueManager::QueueType)i))
 			{
-				for (int j = 0; j < m_renderQueueManager.m_queues[i].getSize(); ++j)
+				for (int j = 0; j < renderQueues.m_queues[i].getSize(); ++j)
 				{
-					AgRenderNode* node = m_renderQueueManager.m_queues[i].get(j);
+					const AgRenderNode* node = renderQueues.m_queues[i].get(j);
 					if (!node || !node->m_dirty)
 						continue;
 
 					if(m_occlusionSystem)
 						node->draw(occlusionViews, m_occlusionSystem, false/*inOcclusion*/);
 					node->draw(allViews, m_fxSystem, m_occlusionSystem ? true : false);
-					if (m_pPicking)
+					if (m_pPicking && m_pPicking->isPicked())
 					{
-						if (m_pick_drawed && !m_pick_reading)
-						{
-							m_pick_reading = m_pPicking->readBlit(AgRenderPass::E_PASS_BLIT);
-							m_pick_drawed = false;
-						}
-						else if (m_pPicking->isPicked())
-						{
-							ViewIdArray pickingView;
-							pickingView.push_back(AgRenderPass::E_PASS_ID);
-							node->draw(pickingView, m_pPicking, m_occlusionSystem ? true : false);
-							m_pick_drawed = true;
-						}
+						ViewIdArray pickingView;
+						pickingView.push_back(pickView);
+						node->draw(pickingView, m_pPicking, m_occlusionSystem ? true : false);
+						m_pick_drawed = true;
 					}
 				}
 			}
@@ -325,9 +238,9 @@ namespace ambergris {
 				if (m_wireframeSystem)
 				{
 					// Wireframe or UI nodes
-					for (int j = 0; j < m_renderQueueManager.m_queues[i].getSize(); ++j)
+					for (int j = 0; j < renderQueues.m_queues[i].getSize(); ++j)
 					{
-						AgRenderNode* node = m_renderQueueManager.m_queues[i].get(j);
+						const AgRenderNode* node = renderQueues.m_queues[i].get(j);
 						if (!node || !node->m_dirty)
 							continue;
 						node->draw(mainView, m_wireframeSystem, m_occlusionSystem ? true : false);
@@ -336,9 +249,9 @@ namespace ambergris {
 			}
 			else
 			{
-				for (int j = 0; j < m_renderQueueManager.m_queues[i].getSize(); ++j)
+				for (int j = 0; j < renderQueues.m_queues[i].getSize(); ++j)
 				{
-					AgRenderNode* node = m_renderQueueManager.m_queues[i].get(j);
+					const AgRenderNode* node = renderQueues.m_queues[i].get(j);
 					if (!node || !node->m_dirty)
 						continue;
 					node->draw(mainView, m_fxSystem, false/*inOcclusionQuery*/);
@@ -351,11 +264,15 @@ namespace ambergris {
 			m_fxSystem->auxiliaryDraw();
 		}
 
-		Singleton<AgRenderResourceManager>::instance().m_text.submit(AgRenderPass::E_VIEW_MAIN);
+		for (ViewIdArray::const_iterator view = mainView.cbegin(), viewEnd = mainView.cend(); view != viewEnd; view++)
+		{
+			Singleton<AgRenderResourceManager>::instance().m_text.submit(*view);
+		}
+		
 
 		// Advance to next frame. Rendering thread will be kicked to
 		// process submitted rendering primitives.
-		m_currFrame = bgfx::frame();
+		return bgfx::frame();
 	}
 	
 }

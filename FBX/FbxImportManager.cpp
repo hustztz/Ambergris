@@ -608,6 +608,7 @@ namespace ambergris_fbx {
 					if (fbxMesh.m_decl.has(bgfx::Attrib::Normal))
 					{
 						pMesh->GetPolygonVertexNormal(nPolygonIndex, nVerticeIndex, lCurrentNormal);
+						lCurrentNormal.Normalize();
 
 						uint8_t num;
 						bgfx::AttribType::Enum type;
@@ -621,6 +622,9 @@ namespace ambergris_fbx {
 							norm[0] = static_cast<float>(lCurrentNormal[0]);
 							norm[1] = static_cast<float>(lCurrentNormal[1]);
 							norm[2] = static_cast<float>(lCurrentNormal[2]);
+							norm[0] = (norm[0] + 1.0f) * 0.5f;
+							norm[1] = (norm[0] + 1.0f) * 0.5f;
+							norm[2] = (norm[0] + 1.0f) * 0.5f;
 						}
 						else
 						{

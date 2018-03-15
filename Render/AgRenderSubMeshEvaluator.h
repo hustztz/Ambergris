@@ -46,7 +46,7 @@ namespace ambergris {
 				{
 					return false;
 				}
-				m_evaluate_nodes.push_back(EvaluateNode(geomNode.m_geometries[i], renderNode));
+				m_evaluate_nodes.push_back(EvaluateNode(geomNode.m_geometries[i], renderNode, geomNode.m_handle));
 			}
 			return true;
 		}
