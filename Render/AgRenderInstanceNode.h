@@ -46,7 +46,6 @@ namespace ambergris {
 		{
 			ms_inst_decl
 				.begin()
-				.add(bgfx::Attrib::TexCoord3, 4, bgfx::AttribType::Float)
 				.add(bgfx::Attrib::TexCoord4, 4, bgfx::AttribType::Float)
 				.add(bgfx::Attrib::TexCoord5, 4, bgfx::AttribType::Float)
 				.add(bgfx::Attrib::TexCoord6, 4, bgfx::AttribType::Float)

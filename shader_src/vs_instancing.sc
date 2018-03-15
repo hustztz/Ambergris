@@ -11,9 +11,9 @@ $output v_normal, v_texcoord0
 void main()
 {
 	mat4 instMtx;
-	instMtx[0] = i_data0;
-	instMtx[1] = i_data1;
-	instMtx[2] = i_data2;
+	instMtx[0] = vec4(i_data0.xyz, 0.0);
+	instMtx[1] = vec4(i_data1.xyz, 0.0);
+	instMtx[2] = vec4(i_data2.xyz, 0.0);
 	instMtx[3] = i_data3;
 
 	vec4 instancePos = instMul(instMtx, vec4(a_position, 1.0) );

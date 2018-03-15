@@ -100,7 +100,10 @@ namespace ambergris {
 	void AgRenderProxyNode::setTransform(const float* mtx)
 	{
 		if (mtx)
+		{
 			memcpy_s(m_mtx, 16 * sizeof(float), mtx, 16 * sizeof(float));
+			m_mtx[3] = m_mtx[7] = m_mtx[11] = 0.0f;
+		}
 		else
 		{
 			m_mtx[0] = m_mtx[5] = m_mtx[9] = m_mtx[15] = 1.0f;

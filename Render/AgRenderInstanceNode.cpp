@@ -149,7 +149,7 @@ namespace ambergris {
 	const float* AgRenderInstanceNode::getTransform(uint16_t id) const
 	{
 		uint16_t transformPos = id * m_stride;
-		if(transformPos + 16 >= (uint16_t)m_instance_buffer.GetSize())
+		if(transformPos + 16 > (uint16_t)m_instance_buffer.GetSize())
 			return nullptr;
 
 		return m_instance_buffer.GetData() + transformPos;
