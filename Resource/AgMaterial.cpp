@@ -25,7 +25,7 @@ namespace ambergris {
 					| BGFX_STATE_DEPTH_TEST_LESS
 					| BGFX_STATE_CULL_CCW
 					| BGFX_STATE_MSAA;
-				mat->m_shader = AgShader::E_LAMBERT_SHADER;
+				mat->m_shader = AgShader::E_MESH_SHADING;
 				mat->m_name = "Lambert";
 				break;
 			case AgMaterial::E_PHONG:

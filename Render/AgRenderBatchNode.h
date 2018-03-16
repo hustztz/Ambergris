@@ -1,16 +1,17 @@
 #pragma once
 #include "AgRenderNode.h"
+#include "AgRenderItem.h"
 
 namespace ambergris {
 
-	class AgRenderCompoundNode : public AgRenderNode
+	class AgRenderBatchNode : public AgRenderNode
 	{
 	public:
-		AgRenderCompoundNode()
+		AgRenderBatchNode()
 			: AgRenderNode()
 		{
 		}
-		virtual ~AgRenderCompoundNode()
+		virtual ~AgRenderBatchNode()
 		{
 			destroy();
 		}
@@ -19,6 +20,7 @@ namespace ambergris {
 		virtual void draw(const ViewIdArray& views, AgFxSystem* pFxSystem, bool inOcclusionQuery) const override;
 		virtual bool appendGeometry(
 			const float* transform,
+			AgMaterial::Handle material,
 			const uint32_t* pick_id,
 			const bgfx::VertexDecl& decl,
 			const uint8_t* vertBuf, uint32_t vertSize,
@@ -26,9 +28,9 @@ namespace ambergris {
 		virtual const AgRenderItem* getItem(uint16_t id) const override;
 	protected:
 #ifdef USING_TINYSTL
-		typedef stl::vector<AgRenderItem> RenderItemArray;
+		typedef stl::vector<AgRenderItem*> RenderItemArray;
 #else
-		typedef std::vector<AgRenderItem> RenderItemArray;
+		typedef std::vector<AgRenderItem*> RenderItemArray;
 #endif
 		RenderItemArray		m_items;
 	};

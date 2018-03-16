@@ -26,7 +26,7 @@ namespace ambergris {
 
 			switch (id)
 			{
-			case AgShader::E_LAMBERT_SHADER:
+			case AgShader::E_MESH_SHADING:
 				shader->m_program = shaderUtils::loadProgram("vs_mesh", "fs_lambert");
 				if (bgfx::isValid(shader->m_program))
 				{
@@ -72,7 +72,7 @@ namespace ambergris {
 				}
 				break;
 
-			case AgShader::E_LAMBERT_INSTANCE_SHADER:
+			case AgShader::E_MESH_INSTANCE_SHADER:
 				shader->m_program = shaderUtils::loadProgram("vs_instancing", "fs_lambert");
 				if (bgfx::isValid(shader->m_program))
 				{

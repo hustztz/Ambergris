@@ -10,6 +10,7 @@ namespace ambergris {
 	/*virtual*/
 	bool AgRenderProxyNode::appendGeometry(
 		const float* transform,
+		AgMaterial::Handle material,
 		const uint32_t* pick_id,
 		const bgfx::VertexDecl& decl,
 		const uint8_t* vertBuf, uint32_t vertSize,
@@ -36,12 +37,8 @@ namespace ambergris {
 		}
 		else
 		{
-			const AgMaterial* mat = Singleton<AgRenderResourceManager>::instance().m_materials.get(m_material_handle);
-			if (!mat)
-				return;
-
-			shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(mat->getShaderHandle());
-			shaderState = mat->m_state_flags;
+			shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(m_shader);
+			shaderState = m_renderState;
 		}
 		
 		if (!shader)

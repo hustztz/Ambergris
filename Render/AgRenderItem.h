@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Resource/AgMaterial.h"
 #include "Resource/AgTexture.h"
 #include "Resource/AgShader.h"
 
@@ -42,6 +43,9 @@ namespace ambergris {
 		void destroyBuffers();
 		void submit() const;
 
+		void setMaterial(AgMaterial::Handle id) { m_material_handle = id; }
+		AgMaterial::Handle getMaterial() const { return m_material_handle; }
+
 		void enableOcclusionQuery();
 		void disableOcclusionQuery();
 	protected:
@@ -49,12 +53,16 @@ namespace ambergris {
 		void _SetVertexBuffer(const bgfx::VertexDecl& decl, const uint8_t* buffer, uint32_t size);
 		void _SetIndexBuffer(const uint16_t* buffer, uint32_t size);
 
+	private:
+		AgRenderItem(const AgRenderItem&);
+		AgRenderItem& operator=(const AgRenderItem&);
 	public:
 		bgfx::OcclusionQueryHandle	m_oqh;
 		bgfx::VertexBufferHandle	m_vbh;
 		bgfx::IndexBufferHandle		m_ibh;
 		float						m_mtx[16];
 		uint32_t					m_pick_id[3];
+		AgMaterial::Handle			m_material_handle;
 		UniformData					m_uniformData[AgShader::MAX_UNIFORM_COUNT];
 	};
 }

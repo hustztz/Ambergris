@@ -1,5 +1,6 @@
 #include "AgRenderSingleNode.h"
 #include "Resource/AgRenderResourceManager.h"
+
 #include "AgHardwarePickingSystem.h"
 
 #include <assert.h>
@@ -16,6 +17,7 @@ namespace ambergris {
 	/*virtual*/
 	bool AgRenderSingleNode::appendGeometry(
 		const float* transform,
+		AgMaterial::Handle material,
 		const uint32_t* pick_id,
 		const bgfx::VertexDecl& decl,
 		const uint8_t* vertBuf, uint32_t vertSize,
@@ -29,7 +31,9 @@ namespace ambergris {
 			vertBuf, vertSize,
 			indexBuf, indexSize);
 		m_item.setTransform(transform);
+		m_item.setMaterial(material);
 		m_item.setPickID(pick_id);
+		m_item.enableOcclusionQuery();
 		return true;
 	}
 
@@ -48,12 +52,8 @@ namespace ambergris {
 		}
 		else
 		{
-			const AgMaterial* mat = Singleton<AgRenderResourceManager>::instance().m_materials.get(m_material_handle);
-			if (!mat)
-				return;
-
-			shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(mat->getShaderHandle());
-			shaderState = mat->m_state_flags;
+			shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(m_shader);
+			shaderState = m_renderState;
 		}
 		
 		if (!shader)

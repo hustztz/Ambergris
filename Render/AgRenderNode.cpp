@@ -19,11 +19,7 @@ namespace ambergris {
 
 	void AgRenderNode::setTexture(uint8_t slot, AgTexture::Handle tex_handle)
 	{
-		const AgMaterial* mat = Singleton<AgRenderResourceManager>::instance().m_materials.get(m_material_handle);
-		if (!mat)
-			return;
-
-		const AgShader* shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(mat->getShaderHandle());
+		const AgShader* shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(AgShader::E_MESH_SHADING);//TODO
 		if (!shader)
 			return;
 

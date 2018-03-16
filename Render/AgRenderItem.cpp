@@ -1,4 +1,5 @@
 #include "AgRenderItem.h"
+#include "Resource/AgRenderResourceManager.h"
 
 #include <memory.h>
 
@@ -8,6 +9,7 @@ namespace ambergris {
 		: m_vbh(BGFX_INVALID_HANDLE)
 		, m_ibh(BGFX_INVALID_HANDLE)
 		, m_oqh(BGFX_INVALID_HANDLE)
+		, m_material_handle(AgMaterial::MaterialType::E_LAMBERT)
 	{
 	}
 
@@ -66,6 +68,11 @@ namespace ambergris {
 	void AgRenderItem::submit() const
 	{
 		bgfx::setTransform(m_mtx);
+		const AgMaterial* mat = Singleton<AgRenderResourceManager>::instance().m_materials.get(m_material_handle);
+		if (!mat)
+			return;
+		//TODO
+
 		bgfx::setIndexBuffer(m_ibh);
 		bgfx::setVertexBuffer(0, m_vbh);
 	}

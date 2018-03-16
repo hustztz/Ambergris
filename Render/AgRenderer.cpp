@@ -89,20 +89,26 @@ namespace ambergris {
 			return AgRenderNode::kInvalidHandle;
 
 		AgRenderNode::Handle nodeHandle = AgRenderNode::kInvalidHandle;
+		//TODO
 		uint8_t queue = AgRenderQueueManager::E_STATIC_SCENE_OPAQUE;
-		switch (renderNode->getMaterial())
+		if (renderNode->isTransparent())
 		{
-		case AgMaterial::E_LAMBERT:
-		case AgMaterial::E_PHONG:
-			nodeHandle = m_renderQueueManager.m_queues[AgRenderQueueManager::E_STATIC_SCENE_OPAQUE].append(renderNode);
-			queue = AgRenderQueueManager::E_STATIC_SCENE_OPAQUE;
-			break;
-		case 3: //TODO
 			nodeHandle = m_renderQueueManager.m_queues[AgRenderQueueManager::E_STATIC_SCENE_TRANSPARENT].append(renderNode);
 			queue = AgRenderQueueManager::E_STATIC_SCENE_TRANSPARENT;
-			break;
-		default:
-			printf("Unsupported material.\n");
+		}
+		else
+		{
+			uint64_t state_flags = 0
+				| BGFX_STATE_WRITE_RGB
+				| BGFX_STATE_WRITE_A
+				| BGFX_STATE_WRITE_Z
+				| BGFX_STATE_DEPTH_TEST_LESS
+				| BGFX_STATE_CULL_CCW
+				| BGFX_STATE_MSAA;
+			renderNode->setShader(AgShader::E_MESH_SHADING, state_flags);
+			nodeHandle = m_renderQueueManager.m_queues[AgRenderQueueManager::E_STATIC_SCENE_OPAQUE].append(renderNode);
+			queue = AgRenderQueueManager::E_STATIC_SCENE_OPAQUE;
+			
 		}
 
 		if (AgRenderNode::kInvalidHandle == nodeHandle)

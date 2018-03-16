@@ -1,4 +1,4 @@
-#include "AgRenderCompoundNode.h"
+#include "AgRenderBatchNode.h"
 #include "Resource/AgRenderResourceManager.h"
 #include "AgRenderItem.h"
 #include "AgHardwarePickingSystem.h"
@@ -8,19 +8,25 @@
 namespace ambergris {
 
 	/*virtual*/
-	void AgRenderCompoundNode::destroy()
+	void AgRenderBatchNode::destroy()
 	{
-		for(auto item= m_items.begin(); item != m_items.end(); ++ item)
+		for(auto iter = m_items.begin(); iter != m_items.end(); ++iter)
 		{
-			item->destroyBuffers();
+			AgRenderItem* item = *iter;
+			if (item)
+			{
+				item->destroyBuffers();
+				delete item;
+			}
 		}
 		m_items.clear();
 		AgRenderNode::destroy();
 	}
 
 	/*virtual*/
-	bool AgRenderCompoundNode::appendGeometry(
+	bool AgRenderBatchNode::appendGeometry(
 		const float* transform,
+		AgMaterial::Handle material,
 		const uint32_t* pick_id,
 		const bgfx::VertexDecl& decl,
 		const uint8_t* vertBuf, uint32_t vertSize,
@@ -37,19 +43,20 @@ namespace ambergris {
 			if (decl.getStride() != m_decl.getStride())
 				return false;
 		}
-		AgRenderItem renderItem;
-		renderItem.setBuffers(decl,
+		AgRenderItem* renderItem = new AgRenderItem;
+		renderItem->setBuffers(decl,
 			vertBuf, vertSize,
 			indexBuf, indexSize);
-		renderItem.setTransform(transform);
-		renderItem.setPickID(pick_id);
+		renderItem->setTransform(transform);
+		renderItem->setMaterial(material);
+		renderItem->setPickID(pick_id);
 
 		m_items.push_back(renderItem);
 		return true;
 	}
 
 	/*virtual*/
-	void AgRenderCompoundNode::draw(const ViewIdArray& views, AgFxSystem* pFxSystem, bool inOcclusionQuery) const
+	void AgRenderBatchNode::draw(const ViewIdArray& views, AgFxSystem* pFxSystem, bool inOcclusionQuery) const
 	{
 		if (m_items.empty())
 			return;
@@ -63,12 +70,8 @@ namespace ambergris {
 		}
 		else
 		{
-			const AgMaterial* mat = Singleton<AgRenderResourceManager>::instance().m_materials.get(m_material_handle);
-			if (!mat)
-				return;
-
-			shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(mat->getShaderHandle());
-			shaderState = mat->m_state_flags;
+			shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(m_shader);
+			shaderState = m_renderState;
 		}
 
 		if (!shader)
@@ -88,36 +91,39 @@ namespace ambergris {
 		bgfx::setState(shaderState);
 
 		bgfx::ProgramHandle progHandle = shader->m_program;
-		for (AgRenderCompoundNode::RenderItemArray::const_iterator it = m_items.cbegin(), itEnd = m_items.cend(); it != itEnd; ++it)
+		for (AgRenderBatchNode::RenderItemArray::const_iterator it = m_items.cbegin(), itEnd = m_items.cend(); it != itEnd; ++it)
 		{
+			const AgRenderItem* item = *it;
+			if (!item)
+				continue;
 			if (pFxSystem && typeid(*pFxSystem) == typeid(AgHardwarePickingSystem))
 			{
 				// Submit ID pass based on mesh ID
 				float idsF[4];
-				idsF[0] = it->m_pick_id[0] / 255.0f;
-				idsF[1] = it->m_pick_id[1] / 255.0f;
-				idsF[2] = it->m_pick_id[2] / 255.0f;
+				idsF[0] = item->m_pick_id[0] / 255.0f;
+				idsF[1] = item->m_pick_id[1] / 255.0f;
+				idsF[2] = item->m_pick_id[2] / 255.0f;
 				idsF[3] = 1.0f;
 				bgfx::setUniform(shader->m_uniforms[0].uniform_handle, idsF);
 			}
 			else
 			{
-				_SubmitUniform(shader, &*it);
+				_SubmitUniform(shader, item);
 			}
-			it->submit();
-			if (AgShader::E_SIMPLE_SHADER == pFxSystem->getOverrideShader() && bgfx::isValid(it->m_oqh))
+			item->submit();
+			if (AgShader::E_SIMPLE_SHADER == pFxSystem->getOverrideShader() && bgfx::isValid(item->m_oqh))
 			{
 				for (ViewIdArray::const_iterator view = views.cbegin(), viewEnd = views.cend(); view != viewEnd; view++)
 				{
-					bgfx::setCondition(it->m_oqh, true);//TODO
+					bgfx::setCondition(item->m_oqh, true);//TODO
 					bgfx::submit(*view, progHandle, 0 , it != itEnd - 1 && view != viewEnd - 1);
 				}
 			}
-			else if (inOcclusionQuery && bgfx::isValid(it->m_oqh))
+			else if (inOcclusionQuery && bgfx::isValid(item->m_oqh))
 			{
 				for (ViewIdArray::const_iterator view = views.cbegin(), viewEnd = views.cend(); view != viewEnd; view++)
 				{
-					bgfx::submit(*view, progHandle, it->m_oqh, 0, it != itEnd - 1 && view != viewEnd - 1);
+					bgfx::submit(*view, progHandle, item->m_oqh, 0, it != itEnd - 1 && view != viewEnd - 1);
 				}
 			}
 			else
@@ -130,11 +136,11 @@ namespace ambergris {
 		}
 	}
 
-	/*virtual*/ const AgRenderItem* AgRenderCompoundNode::getItem(uint16_t id) const
+	/*virtual*/ const AgRenderItem* AgRenderBatchNode::getItem(uint16_t id) const
 	{
 		if(id >= m_items.size())
 			return nullptr;
 
-		return &m_items.at(id);
+		return m_items.at(id);
 	}
 }

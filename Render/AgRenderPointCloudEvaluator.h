@@ -3,13 +3,13 @@
 
 namespace ambergris {
 
-	template<typename T>
-	class AgRenderPointCloudEvaluator : public AgRenderBaseEvaluator
+	class AgRenderPointCloudEvaluator : public AgRenderEvaluator
 	{
 	public:
-		AgRenderPointCloudEvaluator(EvaluateNodeArr& nodes) : AgRenderBaseEvaluator(nodes) {}
+		AgRenderPointCloudEvaluator() : AgRenderEvaluator() {}
 		virtual ~AgRenderPointCloudEvaluator() {}
 
-		virtual bool evaluate(const AgMesh& geomNode) override;
+		virtual bool evaluate(const AgObject* pObject) override;
+		virtual void bridgeRenderer(AgRenderer& renderer) const override{}
 	};
 }

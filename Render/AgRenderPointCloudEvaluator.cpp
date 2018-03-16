@@ -6,8 +6,7 @@
 namespace ambergris {
 
 	/*virtual*/
-	template<typename T>
-	bool AgRenderPointCloudEvaluator<T>::evaluate(const AgMesh& geomNode)
+	bool AgRenderPointCloudEvaluator::evaluate(const AgObject* pObject)
 	{
 		
 		return true;

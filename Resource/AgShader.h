@@ -13,12 +13,12 @@ namespace ambergris {
 	{
 		enum ShaderType
 		{
-			E_LAMBERT_SHADER = 0,
+			E_MESH_SHADING = 0,
 			E_SIMPLE_SHADER,
 			E_SKY_LANDSCAPE_SHADER,
 			E_PICKING_SHADER,
 
-			E_LAMBERT_INSTANCE_SHADER,
+			E_MESH_INSTANCE_SHADER,
 			E_SIMPLE_INSTANCE_SHADER,
 			E_SKY_LANDSCAPE_INSTANCE_SHADER,
 			E_PICKING_INSTANCE_SHADER,
@@ -28,7 +28,7 @@ namespace ambergris {
 
 			E_COUNT
 		};
-		static const uint8_t SHADER_INSTANCE_OFFSET = E_LAMBERT_INSTANCE_SHADER;
+		static const uint8_t SHADER_INSTANCE_OFFSET = E_MESH_INSTANCE_SHADER;
 		struct UniformSlot
 		{
 			UniformSlot()

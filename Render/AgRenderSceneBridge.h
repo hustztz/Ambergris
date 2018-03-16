@@ -1,41 +1,35 @@
 #pragma once
+#include "Scene/AgObject.h"
+#include "AgRenderNode.h"
 
-#include "Scene/AgMesh.h"
 #include <memory>
+#include <vector>
 
 namespace ambergris {
-	class AgRenderNode;
-	struct AgRenderer;
-	struct AgSceneDatabase;
 
-	class AgRenderBaseEvaluator
+	struct AgRenderer;
+
+	class AgRenderEvaluator
 	{
 	public:
-		struct EvaluateNode
+		struct ObjectEvaluatorInfo
 		{
-			EvaluateNode(AgMesh::Geometry geometry, std::shared_ptr<AgRenderNode> renderNode, AgObject::Handle objectHandle)
-				: m_geometry(geometry), m_pRenderNode(renderNode) {
+			ObjectEvaluatorInfo(std::shared_ptr<AgRenderNode> renderNode, AgObject::Handle objectHandle)
+				: m_pRenderNode(renderNode)
+			{
 				m_objectHandles.push_back(objectHandle);
 			}
-			~EvaluateNode(){}
+			virtual ~ObjectEvaluatorInfo() {}
 
-			AgMesh::Geometry	m_geometry;
 			std::shared_ptr<AgRenderNode>	m_pRenderNode;
 			std::vector<AgObject::Handle>	m_objectHandles;
 		};
-#ifdef USING_TINYSTL
-		typedef  stl::vector<EvaluateNode> EvaluateNodeArr;
-#else
-		typedef  std::vector<EvaluateNode> EvaluateNodeArr;
-#endif
-		
 	public:
-		AgRenderBaseEvaluator(EvaluateNodeArr& nodes) : m_evaluate_nodes(nodes){}
-		virtual ~AgRenderBaseEvaluator() {}
+		AgRenderEvaluator() {}
+		virtual ~AgRenderEvaluator() {}
 
-		virtual bool evaluate(const AgMesh& geomNode) = 0;
-	protected:
-		EvaluateNodeArr&			m_evaluate_nodes;
+		virtual bool evaluate(const AgObject* pObject) = 0;
+		virtual void bridgeRenderer(AgRenderer& renderer) const = 0;
 	};
 
 	bool AgRenderSceneBridge();

@@ -28,6 +28,7 @@ namespace ambergris {
 		virtual void draw(const ViewIdArray& views, AgFxSystem* pFxSystem, bool inOcclusionQuery) const override;
 		virtual bool appendGeometry(
 			const float* transform,
+			AgMaterial::Handle material,
 			const uint32_t* pick_id,
 			const bgfx::VertexDecl& decl,
 			const uint8_t* vertBuf, uint32_t vertSize,

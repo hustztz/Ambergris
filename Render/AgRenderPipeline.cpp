@@ -228,7 +228,7 @@ namespace ambergris {
 					{
 						ViewIdArray pickingView;
 						pickingView.push_back(pickView);
-						node->draw(pickingView, m_pPicking, m_occlusionSystem ? true : false);
+						node->draw(pickingView, m_pPicking, false/*inOcclusion*/);//TODO:Picking is not support occlusion
 						m_pick_drawed = true;
 					}
 				}
