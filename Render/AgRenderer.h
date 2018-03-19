@@ -4,8 +4,7 @@
 #include "AgRenderPipeline.h"
 #include "AgRenderQueue.h"
 #include "AgRenderPass.h"
-
-#include <map>
+#include "Resource/AgGeometry.h"
 
 namespace ambergris {
 
@@ -14,11 +13,24 @@ namespace ambergris {
 	struct AgRenderer
 	{
 	public:
+		struct RenderHandle
+		{
+			RenderHandle(uint8_t _queue, AgRenderNode::Handle _node, uint8_t _item) : queue(_queue), node(_node), item(_item) {}
+			RenderHandle() : queue(0), node(AgRenderNode::kInvalidHandle), item(0) {}
+
+			uint8_t queue;
+			AgRenderNode::Handle node;
+			uint8_t	item;
+		};
+	public:
 		void destroy();
 		void clearNodes();
 		void evaluateScene();
 		void runPipeline();
-		AgRenderNode::Handle appendNode(std::shared_ptr<AgRenderNode> renderNode, std::vector<AgResource::Handle>& objects);
+
+		const AgRenderNode* appendNode(std::shared_ptr<AgRenderNode> renderNode, AgGeometry::Handle geom);
+		const RenderHandle& getRenderHandle(AgGeometry::Handle geom) const;
+		const AgRenderNode* getRenderNode(AgGeometry::Handle geom) const;
 
 		void updatePickingView(float* invViewProj, float mouseXNDC, float mouseYNDC, float fov, float nearFrusm, float farFrusm);
 		void enableOcclusionQuery(bool enable);
@@ -38,18 +50,13 @@ namespace ambergris {
 		AgRenderPass		m_viewPass;
 		AgRenderQueueManager	m_renderQueueManager;
 	private:
-		struct RenderHandle
-		{
-			RenderHandle(uint8_t _queue, AgRenderNode::Handle _node, uint8_t _item) : queue(_queue), node(_node), item(_item) {}
-			uint8_t queue;
-			AgRenderNode::Handle node;
-			uint8_t	item;
-		};
-		typedef std::multimap<AgResource::Handle, RenderHandle> ObjectNodeMap;
-		ObjectNodeMap		m_objectMap;
+		typedef std::vector<RenderHandle> GeometryNodeMapping;
+		GeometryNodeMapping	m_geometryMapping;
 		AgRenderPipeline	m_pipeline;
 
 		uint32_t		m_pick_reading;
 		uint32_t		m_currFrame;
+
+		bool			m_enableOcclusionCulling;
 	};
 }

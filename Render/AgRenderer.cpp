@@ -3,10 +3,13 @@
 #include "Scene/AgSceneDatabase.h"
 #include "AgRenderProxyNode.h"
 #include "AgRenderItem.h"
+#include "Resource\AgRenderResourceManager.h"
 
 #include "BGFX/entry/entry.h" //TODO
 
 #include <thread>
+
+#define OCCLUSION_QUERY_FREQ 1000
 
 namespace ambergris {
 
@@ -14,6 +17,7 @@ namespace ambergris {
 		: m_isEvaluating(false)
 		, m_pick_reading(0)
 		, m_currFrame(UINT32_MAX)
+		, m_enableOcclusionCulling(false)
 	{
 		clearNodes();
 	}
@@ -25,7 +29,7 @@ namespace ambergris {
 	void AgRenderer::clearNodes()
 	{
 		m_renderQueueManager.destroy();
-		m_objectMap.clear();
+		m_geometryMapping.clear();
 	}
 
 	void AgRenderer::destroy()
@@ -54,19 +58,19 @@ namespace ambergris {
 
 	void AgRenderer::enableOcclusionQuery(bool enable)
 	{
-		if (enable)
-		{
-			m_viewPass.init(AgRenderPass::E_OCCLUSION_VIEW_MAIN);
-			/*if()
-			m_viewPass.init(AgRenderPass::E_OCCLUSION_VIEW_SECOND);*///TODO
-		}
-		else
-		{
-			m_viewPass.m_pass_state[AgRenderPass::E_OCCLUSION_VIEW_MAIN].isValid = false;
-			/*if()
-			m_viewPass.m_pass_state[AgRenderPass::E_OCCLUSION_VIEW_SECOND].isValid = false;*///TODO
-		}
-		m_pipeline.enableOcclusionQuery(enable);
+		//if (enable)
+		//{
+		//	m_viewPass.init(AgRenderPass::E_OCCLUSION_VIEW_MAIN);
+		//	/*if()
+		//	m_viewPass.init(AgRenderPass::E_OCCLUSION_VIEW_SECOND);*///TODO
+		//}
+		//else
+		//{
+		//	m_viewPass.m_pass_state[AgRenderPass::E_OCCLUSION_VIEW_MAIN].isValid = false;
+		//	/*if()
+		//	m_viewPass.m_pass_state[AgRenderPass::E_OCCLUSION_VIEW_SECOND].isValid = false;*///TODO
+		//}
+		m_enableOcclusionCulling = enable;
 	}
 
 	void AgRenderer::evaluateScene()
@@ -83,10 +87,10 @@ namespace ambergris {
 	}
 
 
-	AgRenderNode::Handle AgRenderer::appendNode(std::shared_ptr<AgRenderNode> renderNode, std::vector<AgResource::Handle>& objects)
+	const AgRenderNode* AgRenderer::appendNode(std::shared_ptr<AgRenderNode> renderNode, AgGeometry::Handle geom)
 	{
 		if (!renderNode)
-			return AgRenderNode::kInvalidHandle;
+			return nullptr;
 
 		AgRenderNode::Handle nodeHandle = AgRenderNode::kInvalidHandle;
 		//TODO
@@ -112,17 +116,28 @@ namespace ambergris {
 		}
 
 		if (AgRenderNode::kInvalidHandle == nodeHandle)
-			return AgRenderNode::kInvalidHandle;
+			return nullptr;
 
-		if (AgRenderNode::kInvalidHandle == nodeHandle)
-			return nodeHandle;
+		if(geom >= m_geometryMapping.size())
+			m_geometryMapping.resize(geom + 1);
+		m_geometryMapping[geom] = RenderHandle(queue, nodeHandle, 0);
 
-		uint8_t index = 0;
-		for (auto object = objects.cbegin(); object != objects.cend(); object++, index++)
-		{
-			m_objectMap.insert(std::pair<AgResource::Handle, RenderHandle>(*object, RenderHandle(queue, nodeHandle, index)));
-		}
-		return nodeHandle;
+		return getRenderNode(geom);
+	}
+
+	const AgRenderNode* AgRenderer::getRenderNode(AgGeometry::Handle geom) const
+	{
+		if (geom >= m_geometryMapping.size())
+			return nullptr;
+		const RenderHandle& renderHandle = m_geometryMapping.at(geom);
+		return m_renderQueueManager.m_queues[renderHandle.queue].get(renderHandle.node);
+	}
+
+	const AgRenderer::RenderHandle& AgRenderer::getRenderHandle(AgGeometry::Handle geom) const
+	{
+		if (geom >= m_geometryMapping.size())
+			return AgRenderer::RenderHandle();
+		return m_geometryMapping.at(geom);
 	}
 
 	void AgRenderer::runPipeline()
@@ -155,10 +170,6 @@ namespace ambergris {
 				mainView.push_back(i);
 				allViews.push_back(i);
 				break;
-			case AgRenderPass::E_OCCLUSION_VIEW_MAIN:
-			case AgRenderPass::E_OCCLUSION_VIEW_SECOND:
-				occlusionViews.push_back(i);
-				break;
 			case AgRenderPass::E_VIEW_SECOND:
 				allViews.push_back(i);
 				break;
@@ -166,7 +177,22 @@ namespace ambergris {
 				break;
 			}
 		}
-		m_currFrame = m_pipeline.run(m_renderQueueManager, mainView, allViews, AgRenderPass::E_PASS_ID, occlusionViews);
+		bool occlusionQuery = false;
+		bool occlusionCulling = false;
+		if (m_enableOcclusionCulling)
+		{
+			if (m_currFrame % OCCLUSION_QUERY_FREQ)
+			{
+				occlusionQuery = false;
+				occlusionCulling = true;
+			}
+			else
+			{
+				occlusionQuery = true;
+				occlusionCulling = false;
+			}
+		}
+		m_currFrame = m_pipeline.run(m_renderQueueManager, mainView, allViews, AgRenderPass::E_PASS_ID, occlusionQuery, occlusionCulling);
 	}
 
 	void AgRenderer::_UpdatePickingNodes()
@@ -182,11 +208,13 @@ namespace ambergris {
 			if (!pMesh)
 				continue;
 
-			auto pick_result_beg = m_objectMap.lower_bound(pMesh->m_handle);
-			auto pick_result_end = m_objectMap.upper_bound(pMesh->m_handle);
-			for (auto pick_result = pick_result_beg; pick_result != pick_result_end; pick_result++)
+			for (auto geom = pMesh->m_geometries.cbegin(); geom != pMesh->m_geometries.cend(); geom ++)
 			{
-				RenderHandle renderHandle = pick_result->second;
+				const AgGeometry* pGeometry = Singleton<AgRenderResourceManager>::instance().m_geometries.get(*geom);
+				if (!pGeometry)
+					continue;
+
+				RenderHandle renderHandle = m_geometryMapping.at(pGeometry->m_handle);
 				const AgRenderNode* node = m_renderQueueManager.m_queues[renderHandle.queue].get(renderHandle.node);
 				if (node)
 				{

@@ -13,6 +13,7 @@ namespace ambergris {
 			: AgRenderSingleNode()
 			, m_stride(0)
 			, m_instance_db(BGFX_INVALID_HANDLE)
+			, m_prepared(false)
 		{
 			if (0 == ms_inst_decl.getStride())
 			{
@@ -25,7 +26,7 @@ namespace ambergris {
 		}
 
 		virtual void destroy() override;
-		virtual void draw(const ViewIdArray& views, AgFxSystem* pFxSystem, bool inOcclusionQuery) const override;
+		virtual void draw(const ViewIdArray& views, AgFxSystem* pFxSystem, bool occlusionQuery, bool occlusionCulling) const override;
 		virtual bool appendGeometry(
 			const float* transform,
 			AgMaterial::Handle material,
@@ -35,10 +36,11 @@ namespace ambergris {
 			const uint16_t* indexBuf, uint32_t indexSize) override;
 		virtual const AgRenderItem* getItem(uint16_t id) const override { return &m_item; }
 		virtual const float* getTransform(uint16_t id) const override;
-		virtual bool prepare() override;
 
+		bool prepare() const;
 		bool appendInstance(const float* data, unsigned int size);
 	private:
+		bool						m_prepared;
 		TBuffer<float>				m_instance_buffer;
 		//bgfx::InstanceDataBuffer	m_instance_db;
 		bgfx::DynamicVertexBufferHandle m_instance_db;

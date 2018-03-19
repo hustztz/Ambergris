@@ -20,7 +20,7 @@ namespace ambergris {
 	}
 
 	/*virtual*/
-	void AgRenderProxyNode::draw(const ViewIdArray& views, AgFxSystem* pFxSystem, bool inOcclusionQuery) const
+	void AgRenderProxyNode::draw(const ViewIdArray& views, AgFxSystem* pFxSystem, bool occlusionQuery, bool occlusionCulling) const
 	{
 		if (!m_pItem)
 			return;
@@ -33,7 +33,10 @@ namespace ambergris {
 		if (pFxSystem && AgShader::E_COUNT != pFxSystem->getOverrideShader())
 		{
 			shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(pFxSystem->getOverrideShader());
-			shaderState = pFxSystem->getOverrideStates();
+			if (pFxSystem->getOverrideStates())
+				shaderState = pFxSystem->getOverrideStates();
+			else
+				shaderState = m_renderState;
 		}
 		else
 		{
@@ -60,7 +63,7 @@ namespace ambergris {
 
 		bgfx::ProgramHandle progHandle = shader->m_program;
 
-		if (AgShader::E_SIMPLE_SHADER == pFxSystem->getOverrideShader() && bgfx::isValid(m_pItem->m_oqh))
+		if (occlusionCulling && bgfx::isValid(m_pItem->m_oqh))
 		{
 			for (ViewIdArray::const_iterator view = views.cbegin(), viewEnd = views.cend(); view != viewEnd; view++)
 			{
@@ -68,7 +71,7 @@ namespace ambergris {
 				bgfx::submit(*view, progHandle, 0, view != viewEnd - 1);
 			}
 		}
-		else if (inOcclusionQuery && bgfx::isValid(m_pItem->m_oqh))
+		else if (occlusionQuery && bgfx::isValid(m_pItem->m_oqh))
 		{
 			for (ViewIdArray::const_iterator view = views.cbegin(), viewEnd = views.cend(); view != viewEnd; view++)
 			{

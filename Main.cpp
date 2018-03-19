@@ -125,7 +125,7 @@ public:
 
 		m_width = _width;
 		m_height = _height;
-		m_debug = BGFX_DEBUG_NONE;
+		m_debug = BGFX_DEBUG_NONE;//BGFX_DEBUG_STATS
 		m_reset = BGFX_RESET_NONE;// BGFX_RESET_VSYNC;
 
 		bgfx::init(args.m_type, args.m_pciId);
@@ -159,6 +159,8 @@ public:
 		Singleton<AgRenderer>::instance().m_viewPass.m_width = m_width;
 		Singleton<AgRenderer>::instance().m_viewPass.m_height = m_height;
 		Singleton<AgRenderer>::instance().m_viewPass.init(AgRenderPass::E_VIEW_MAIN);
+		//TODO:
+		bgfx::setViewMode(AgRenderPass::E_VIEW_MAIN, bgfx::ViewMode::Sequential);
 
 		m_timeOffset = bx::getHPCounter();
 		m_bOcclusionQuery = false;
@@ -248,12 +250,10 @@ public:
 			if (m_secondViewer)
 			{
 				Singleton<AgRenderer>::instance().m_viewPass.init(AgRenderPass::E_VIEW_SECOND);
-				Singleton<AgRenderer>::instance().m_viewPass.init(AgRenderPass::E_OCCLUSION_VIEW_SECOND);
 			}
 			else
 			{
 				Singleton<AgRenderer>::instance().m_viewPass.m_pass_state[AgRenderPass::E_VIEW_SECOND].isValid = false;
-				Singleton<AgRenderer>::instance().m_viewPass.m_pass_state[AgRenderPass::E_OCCLUSION_VIEW_SECOND].isValid = false;
 			}
 
 			ImGui::End();

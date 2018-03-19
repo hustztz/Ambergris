@@ -1,4 +1,4 @@
-#include "AgRenderBatchNode.h"
+#include "AgRenderMultiNode.h"
 #include "Resource/AgRenderResourceManager.h"
 #include "AgRenderItem.h"
 #include "AgHardwarePickingSystem.h"
@@ -8,7 +8,7 @@
 namespace ambergris {
 
 	/*virtual*/
-	void AgRenderBatchNode::destroy()
+	void AgRenderMultiNode::destroy()
 	{
 		for(auto iter = m_items.begin(); iter != m_items.end(); ++iter)
 		{
@@ -24,7 +24,7 @@ namespace ambergris {
 	}
 
 	/*virtual*/
-	bool AgRenderBatchNode::appendGeometry(
+	bool AgRenderMultiNode::appendGeometry(
 		const float* transform,
 		AgMaterial::Handle material,
 		const uint32_t* pick_id,
@@ -50,13 +50,14 @@ namespace ambergris {
 		renderItem->setTransform(transform);
 		renderItem->setMaterial(material);
 		renderItem->setPickID(pick_id);
+		renderItem->enableOcclusionQuery();
 
 		m_items.push_back(renderItem);
 		return true;
 	}
 
 	/*virtual*/
-	void AgRenderBatchNode::draw(const ViewIdArray& views, AgFxSystem* pFxSystem, bool inOcclusionQuery) const
+	void AgRenderMultiNode::draw(const ViewIdArray& views, AgFxSystem* pFxSystem, bool occlusionQuery, bool occlusionCulling) const
 	{
 		if (m_items.empty())
 			return;
@@ -66,7 +67,10 @@ namespace ambergris {
 		if (pFxSystem && AgShader::E_COUNT != pFxSystem->getOverrideShader())
 		{
 			shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(pFxSystem->getOverrideShader());
-			shaderState = pFxSystem->getOverrideStates();
+			if (pFxSystem->getOverrideStates())
+				shaderState = pFxSystem->getOverrideStates();
+			else
+				shaderState = m_renderState;
 		}
 		else
 		{
@@ -91,7 +95,7 @@ namespace ambergris {
 		bgfx::setState(shaderState);
 
 		bgfx::ProgramHandle progHandle = shader->m_program;
-		for (AgRenderBatchNode::RenderItemArray::const_iterator it = m_items.cbegin(), itEnd = m_items.cend(); it != itEnd; ++it)
+		for (AgRenderMultiNode::RenderItemArray::const_iterator it = m_items.cbegin(), itEnd = m_items.cend(); it != itEnd; ++it)
 		{
 			const AgRenderItem* item = *it;
 			if (!item)
@@ -111,15 +115,15 @@ namespace ambergris {
 				_SubmitUniform(shader, item);
 			}
 			item->submit();
-			if (AgShader::E_SIMPLE_SHADER == pFxSystem->getOverrideShader() && bgfx::isValid(item->m_oqh))
+			if (occlusionCulling && bgfx::isValid(item->m_oqh))
 			{
 				for (ViewIdArray::const_iterator view = views.cbegin(), viewEnd = views.cend(); view != viewEnd; view++)
 				{
-					bgfx::setCondition(item->m_oqh, true);//TODO
+					bgfx::setCondition(item->m_oqh, true);//TODO:multi-view
 					bgfx::submit(*view, progHandle, 0 , it != itEnd - 1 && view != viewEnd - 1);
 				}
 			}
-			else if (inOcclusionQuery && bgfx::isValid(item->m_oqh))
+			else if (occlusionQuery && bgfx::isValid(item->m_oqh))
 			{
 				for (ViewIdArray::const_iterator view = views.cbegin(), viewEnd = views.cend(); view != viewEnd; view++)
 				{
@@ -136,7 +140,7 @@ namespace ambergris {
 		}
 	}
 
-	/*virtual*/ const AgRenderItem* AgRenderBatchNode::getItem(uint16_t id) const
+	/*virtual*/ const AgRenderItem* AgRenderMultiNode::getItem(uint16_t id) const
 	{
 		if(id >= m_items.size())
 			return nullptr;

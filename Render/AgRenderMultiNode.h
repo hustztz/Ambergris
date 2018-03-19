@@ -4,20 +4,20 @@
 
 namespace ambergris {
 
-	class AgRenderBatchNode : public AgRenderNode
+	class AgRenderMultiNode : public AgRenderNode
 	{
 	public:
-		AgRenderBatchNode()
+		AgRenderMultiNode()
 			: AgRenderNode()
 		{
 		}
-		virtual ~AgRenderBatchNode()
+		virtual ~AgRenderMultiNode()
 		{
 			destroy();
 		}
 
 		virtual void destroy() override;
-		virtual void draw(const ViewIdArray& views, AgFxSystem* pFxSystem, bool inOcclusionQuery) const override;
+		virtual void draw(const ViewIdArray& views, AgFxSystem* pFxSystem, bool occlusionQuery, bool occlusionCulling) const override;
 		virtual bool appendGeometry(
 			const float* transform,
 			AgMaterial::Handle material,

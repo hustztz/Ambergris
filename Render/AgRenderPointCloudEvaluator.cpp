@@ -6,7 +6,7 @@
 namespace ambergris {
 
 	/*virtual*/
-	bool AgRenderPointCloudEvaluator::evaluate(const AgObject* pObject)
+	bool AgRenderPointCloudEvaluator::evaluate(AgRenderer& renderer, const AgObject* pObject)
 	{
 		
 		return true;

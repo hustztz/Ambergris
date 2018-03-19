@@ -49,11 +49,11 @@ namespace ambergris_fbx {
 			float mShinness;
 		};
 		void _ImportSceneInfo(FbxScene *fbx_scene);
-		FbxDouble3 _GetMaterialProperty(ambergris::AgMesh::Geometry* output,
+		FbxDouble3 _GetMaterialProperty(ambergris::AgGeometry* output,
 			const FbxSurfaceMaterial * pMaterial,
 			const char * pPropertyName,
 			const char * pFactorPropertyName);
-		void _ParseMaterial(ambergris::AgMesh::Geometry* output, const FbxSurfaceMaterial * pMaterial);
+		void _ParseMaterial(ambergris::AgGeometry* output, const FbxSurfaceMaterial * pMaterial);
 		void _ParseTexture(FbxScene *fbx_scene);
 		void _ExtractMesh(ambergris::AgMesh& renderNode, FbxMesh *pMesh);
 		void _ParseMesh(FbxNode* node);

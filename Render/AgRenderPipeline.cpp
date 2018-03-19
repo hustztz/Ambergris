@@ -2,7 +2,6 @@
 #include "AgHardwarePickingSystem.h"
 #include "AgSkySystem.h"
 #include "AgLightingSystem.h"
-#include "AgOcclusionSystem.h"
 #include "AgWireframeSystem.h"
 #include "AgRenderQueue.h"
 #include "Resource/AgRenderResourceManager.h"
@@ -10,8 +9,7 @@
 namespace ambergris {
 
 	AgRenderPipeline::AgRenderPipeline()
-		: m_occlusionSystem(nullptr)
-		, m_pPicking(nullptr)
+		: m_pPicking(nullptr)
 		, m_fxSystem(nullptr)
 		, m_wireframeSystem(nullptr)
 		, m_pick_drawed(false)
@@ -39,11 +37,6 @@ namespace ambergris {
 		{
 			delete m_wireframeSystem;
 			m_wireframeSystem = nullptr;
-		}
-		if (m_occlusionSystem)
-		{
-			delete m_occlusionSystem;
-			m_occlusionSystem = nullptr;
 		}
 	}
 
@@ -79,35 +72,6 @@ namespace ambergris {
 			{
 				delete m_wireframeSystem;
 				m_wireframeSystem = nullptr;
-			}
-		}
-	}
-
-	void AgRenderPipeline::enableOcclusionQuery(bool enable)
-	{
-		if (enable)
-		{
-			if (m_occlusionSystem)
-			{
-				return;
-			}
-			else
-			{
-				m_occlusionSystem = new AgOcclusionSystem();
-				m_occlusionSystem->init();
-			}
-		}
-		else
-		{
-			if (!m_occlusionSystem)
-			{
-				return;
-			}
-			else
-			{
-				m_occlusionSystem->destroy();
-				delete m_occlusionSystem;
-				m_occlusionSystem = nullptr;
 			}
 		}
 	}
@@ -208,7 +172,7 @@ namespace ambergris {
 		const ViewIdArray& mainView,
 		const ViewIdArray& allViews,
 		bgfx::ViewId		pickView,
-		const ViewIdArray& occlusionViews)
+		bool occlusionQuery, bool occlusionCulling)
 	{
 		// TODO: multithread
 		for (int i = 0; i < AgRenderQueueManager::E_TYPE_COUNT; i ++)
@@ -221,40 +185,16 @@ namespace ambergris {
 					if (!node || !node->m_dirty)
 						continue;
 
-					if(m_occlusionSystem)
-						node->draw(occlusionViews, m_occlusionSystem, false/*inOcclusion*/);
-					node->draw(allViews, m_fxSystem, m_occlusionSystem ? true : false);
+					//if(m_occlusionSystem)
+					//	node->draw(occlusionViews, m_occlusionSystem, false/*inOcclusion*/);
+					node->draw(allViews, m_fxSystem, occlusionQuery, occlusionCulling);
 					if (m_pPicking && m_pPicking->isPicked())
 					{
 						ViewIdArray pickingView;
 						pickingView.push_back(pickView);
-						node->draw(pickingView, m_pPicking, false/*inOcclusion*/);//TODO:Picking is not support occlusion
+						node->draw(pickingView, m_pPicking, false/*occlusionQuery*/, false/*occlusionCulling*/);//TODO:Picking is not support occlusion(crash)
 						m_pick_drawed = true;
 					}
-				}
-			}
-			else if(AgRenderQueueManager::E_WIREFRAME == i)
-			{
-				if (m_wireframeSystem)
-				{
-					// Wireframe or UI nodes
-					for (int j = 0; j < renderQueues.m_queues[i].getSize(); ++j)
-					{
-						const AgRenderNode* node = renderQueues.m_queues[i].get(j);
-						if (!node || !node->m_dirty)
-							continue;
-						node->draw(mainView, m_wireframeSystem, m_occlusionSystem ? true : false);
-					}
-				}
-			}
-			else
-			{
-				for (int j = 0; j < renderQueues.m_queues[i].getSize(); ++j)
-				{
-					const AgRenderNode* node = renderQueues.m_queues[i].get(j);
-					if (!node || !node->m_dirty)
-						continue;
-					node->draw(mainView, m_fxSystem, false/*inOcclusionQuery*/);
 				}
 			}
 		}
@@ -262,6 +202,16 @@ namespace ambergris {
 		if (m_fxSystem)
 		{
 			m_fxSystem->auxiliaryDraw();
+		}
+
+		// Wireframe or UI nodes
+		for (int i = 0; i < renderQueues.m_queues[AgRenderQueueManager::E_WIREFRAME].getSize(); ++i)
+		{
+			const AgRenderNode* node = renderQueues.m_queues[AgRenderQueueManager::E_WIREFRAME].get(i);
+			if (!node || !node->m_dirty)
+				continue;
+
+			node->draw(mainView, m_wireframeSystem, false/*occlusionQuery*/, false/*occlusionCulling*/);
 		}
 
 		for (ViewIdArray::const_iterator view = mainView.cbegin(), viewEnd = mainView.cend(); view != viewEnd; view++)

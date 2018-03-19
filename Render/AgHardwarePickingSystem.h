@@ -16,7 +16,6 @@ namespace ambergris {
 		virtual void setOverrideResource(const AgShader* shader, void* data) const override;
 		virtual bool needTexture() const override { return false; }
 		virtual AgShader::Handle getOverrideShader() const override { return AgShader::E_PICKING_SHADER; }
-		virtual uint64_t getOverrideStates() const override { return BGFX_STATE_DEFAULT; }
 
 		void updateView(bgfx::ViewId view_pass, float* invViewProj, float mouseXNDC, float mouseYNDC, float fov, float nearFrusm, float farFrusm);
 		uint8_t acquireResult(bool isSinglePick);

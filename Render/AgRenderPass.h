@@ -9,11 +9,9 @@ namespace ambergris {
 		enum RenderPassName
 		{
 			E_VIEW_MAIN = 0,
-			E_OCCLUSION_VIEW_MAIN,
 			E_PASS_ID,
 			E_PASS_BLIT,
 			E_VIEW_SECOND,
-			E_OCCLUSION_VIEW_SECOND,
 
 			E_PASS_COUNT
 		};

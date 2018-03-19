@@ -76,7 +76,6 @@ namespace ambergris {
 		virtual void setOverrideResource(const AgShader* shader, void* data) const override;
 		virtual void updateTime(float time) override;
 		virtual AgShader::Handle getOverrideShader() const override { return AgShader::E_SKY_LANDSCAPE_SHADER; }
-		virtual uint64_t getOverrideStates() const override { return BGFX_STATE_DEFAULT; }
 	private:
 		ProceduralSky m_sky;
 		SunController m_sun;

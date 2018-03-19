@@ -4,7 +4,7 @@
 
 namespace ambergris {
 
-	uint64_t  AgRenderMeshBatchEvaluator::_ComputeBatchHashCode(const AgMesh::Geometry* geom)
+	uint64_t  AgRenderMeshBatchEvaluator::_ComputeBatchHashCode(const AgGeometry* geom)
 	{
 		if (!geom)
 			return 0;
@@ -22,7 +22,7 @@ namespace ambergris {
 	}
 
 	/*virtual*/
-	bool AgRenderMeshBatchEvaluator::evaluate(const AgObject* pObject)
+	bool AgRenderMeshBatchEvaluator::evaluate(AgRenderer& renderer, const AgObject* pObject)
 	{
 		const AgMesh* mesh = dynamic_cast<const AgMesh*>(pObject);
 		if (!mesh)
@@ -32,30 +32,12 @@ namespace ambergris {
 		bool instanceSupport = 0 != (bgfx::getCaps()->supported & BGFX_CAPS_INSTANCING);
 		if (instanceSupport && mesh->m_inst_handle >= 0)
 		{
-			ret &= AgRenderMeshEvaluator::evaluate(pObject);
+			ret &= AgRenderMeshEvaluator::evaluate(renderer, pObject);
 		}
 		else
 		{
-			ret &= _BatchEvaluateSubMesh(mesh, m_batch_evaluate_mapping);
+			ret &= _BatchEvaluateMeshImpl(renderer, mesh);
 		}
 		return ret;
-	}
-
-	/*virtual*/
-	void AgRenderMeshBatchEvaluator::bridgeRenderer(AgRenderer& renderer) const
-	{
-		AgRenderMeshEvaluator::bridgeRenderer(renderer);
-
-		for (auto iter = m_batch_evaluate_mapping.cbegin(); iter != m_batch_evaluate_mapping.cend(); ++iter)
-		{
-			std::shared_ptr<AgRenderEvaluator::ObjectEvaluatorInfo> evaluator = iter->second;
-			if (!evaluator)
-				continue;
-			std::shared_ptr<AgRenderNode> pNode = evaluator->m_pRenderNode;
-			if (pNode && pNode->prepare())
-			{
-				renderer.appendNode(pNode, evaluator->m_objectHandles);
-			}
-		}
 	}
 }

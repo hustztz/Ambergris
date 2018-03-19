@@ -7,7 +7,11 @@ namespace ambergris {
 	{
 		for (int i = 0; i < m_geometries.size(); ++i)
 		{
-			const AgVertexBuffer* vb = Singleton<AgRenderResourceManager>::instance().m_vertex_buffer_pool.get(m_geometries[i].vertex_buffer_handle);
+			const AgGeometry* pGeometry = Singleton<AgRenderResourceManager>::instance().m_geometries.get(m_geometries.at(i));
+			if (!pGeometry)
+				continue;
+
+			const AgVertexBuffer* vb = Singleton<AgRenderResourceManager>::instance().m_vertex_buffer_pool.get(pGeometry->vertex_buffer_handle);
 			if (!vb)
 				continue;
 

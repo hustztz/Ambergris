@@ -22,14 +22,13 @@ namespace ambergris {
 			const ViewIdArray& mainView,
 			const ViewIdArray& allViews,
 			bgfx::ViewId		pickView,
-			const ViewIdArray& occlusionViews);
+			bool occlusionQuery, bool occlusionCulling);
 
 		uint8_t updatePickingResult(bool isSinglePick = true);
 		uint32_t readPickingBlit(bgfx::ViewId view_pass);
 		void updatePickingView(bgfx::ViewId view_pass, float* invViewProj, float mouseXNDC, float mouseYNDC, float fov, float nearFrusm, float farFrusm);
 
 		void updateTime(float time);
-		void enableOcclusionQuery(bool enable);
 		void enableHardwarePicking(bool enable);
 		void enableSkySystem(bool enable);
 
@@ -42,7 +41,6 @@ namespace ambergris {
 		bool			m_pick_drawed;
 		AgHardwarePickingSystem*	m_pPicking;
 		AgFxSystem*				m_fxSystem;
-		AgOcclusionSystem*		m_occlusionSystem;
 		AgWireframeSystem*		m_wireframeSystem;
 	};
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "AgGeometry.h"
 #include "AgVertexBuffer.h"
 #include "AgIndexBuffer.h"
 #include "AgMaterial.h"
@@ -19,6 +20,7 @@ namespace ambergris {
 		typedef AgResourcePool<AgIndexBuffer> IndexBufferPool;
 		IndexBufferPool m_index_buffer_pool;
 
+		AgGeometryManager		m_geometries;
 		AgMaterialManager		m_materials;
 		AgShaderManager			m_shaders;
 		AgTextureManager		m_textures;

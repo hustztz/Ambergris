@@ -20,6 +20,6 @@ namespace ambergris {
 		virtual void updateTime(float time) {}
 		virtual bool needTexture() const { return true; }
 		virtual AgShader::Handle getOverrideShader() const { return AgShader::E_COUNT; }
-		virtual uint64_t getOverrideStates() const { return BGFX_STATE_DEFAULT; }
+		virtual uint64_t getOverrideStates() const { return 0; }
 	};
 }

@@ -28,13 +28,29 @@ namespace ambergris {
 		const uint8_t* vertBuf, uint32_t vertSize,
 		const uint16_t* indexBuf, uint32_t indexSize)
 	{
-		return AgRenderSingleNode::appendGeometry(
+		bool ret = AgRenderSingleNode::appendGeometry(
 			nullptr,
 			material,
-			nullptr,//TODO
+			nullptr,
 			decl,
 			vertBuf, vertSize,
 			indexBuf, indexSize);
+		if (!ret)
+			return false;
+
+		m_prepared = false;
+
+		if (!bgfx::isValid(m_instance_db))
+			m_instance_db = bgfx::createDynamicVertexBuffer(1, ms_inst_decl, BGFX_BUFFER_ALLOW_RESIZE);
+
+		static const int stride = 16;
+		float instanceData[stride];
+		ret &= (0 != memcpy_s(instanceData, stride * sizeof(float), transform, stride * sizeof(float)));
+		instanceData[3] = pick_id[0] / 255.0f;
+		instanceData[7] = pick_id[1] / 255.0f;
+		instanceData[11] = pick_id[2] / 255.0f;
+
+		return appendInstance(instanceData, stride);
 	}
 
 	bool AgRenderInstanceNode::appendInstance(const float* data, unsigned int size)
@@ -50,12 +66,16 @@ namespace ambergris {
 				return false;
 		}
 		m_instance_buffer.Append(data, size);
+		m_prepared = false;
 		return true;
 	}
 
 	/*virtual*/
-	bool AgRenderInstanceNode::prepare()
+	bool AgRenderInstanceNode::prepare() const
 	{
+		if (m_prepared)
+			return true;
+
 		if (0 == m_stride)
 			return false;
 
@@ -77,17 +97,17 @@ namespace ambergris {
 		}
 		return true;*/
 
-		if (!bgfx::isValid(m_instance_db))
-			m_instance_db = bgfx::createDynamicVertexBuffer(numInstances, ms_inst_decl);
-
 		const bgfx::Memory* mem = bgfx::makeRef(m_instance_buffer.GetData(), m_instance_buffer.GetSize() * sizeof(float));
 		bgfx::updateDynamicVertexBuffer(m_instance_db, 0, mem);
 		return bgfx::isValid(m_instance_db);
 	}
 
 	/*virtual*/
-	void AgRenderInstanceNode::draw(const ViewIdArray& views, AgFxSystem* pFxSystem, bool inOcclusionQuery) const
+	void AgRenderInstanceNode::draw(const ViewIdArray& views, AgFxSystem* pFxSystem, bool occlusionQuery, bool occlusionCulling) const
 	{
+		if (!prepare())
+			return;
+
 		if (!bgfx::isValid(m_item.m_vbh) || !bgfx::isValid(m_item.m_ibh))
 			return;
 
@@ -100,7 +120,10 @@ namespace ambergris {
 		if (pFxSystem && AgShader::E_COUNT != pFxSystem->getOverrideShader())
 		{
 			shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(pFxSystem->getOverrideShader() + AgShader::SHADER_INSTANCE_OFFSET);
-			shaderState = pFxSystem->getOverrideStates();
+			if (pFxSystem->getOverrideStates())
+				shaderState = pFxSystem->getOverrideStates();
+			else
+				shaderState = m_renderState;
 		}
 		else
 		{

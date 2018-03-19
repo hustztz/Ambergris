@@ -688,11 +688,13 @@ namespace ambergris_fbx {
 				ib->m_index_buffer = fbxMesh.m_index_buffer;
 				vb->m_decl = fbxMesh.m_decl;
 				vb->m_vertex_buffer = fbxMesh.m_vertex_buffer;
-				AgMesh::Geometry scene_geom;
-				scene_geom.material_handle = AgMaterial::E_LAMBERT;
-				scene_geom.vertex_buffer_handle = vb->m_handle;
-				scene_geom.index_buffer_handle = ib->m_handle;
-				renderNode.m_geometries.push_back(scene_geom);
+				std::shared_ptr<AgGeometry> pRenderGeom(new AgGeometry);
+				pRenderGeom->material_handle = AgMaterial::E_LAMBERT;
+				pRenderGeom->vertex_buffer_handle = vb->m_handle;
+				pRenderGeom->index_buffer_handle = ib->m_handle;
+				AgGeometry::Handle geomHandle = Singleton<AgRenderResourceManager>::instance().m_geometries.append(pRenderGeom);
+				if (AgGeometry::kInvalidHandle != geomHandle)
+					renderNode.m_geometries.push_back(geomHandle);
 			}
 		}
 		else
@@ -744,12 +746,14 @@ namespace ambergris_fbx {
 					}
 				}
 
-				AgMesh::Geometry scene_geom;
-				scene_geom.vertex_buffer_handle = vb->m_handle;
-				scene_geom.index_buffer_handle = ib->m_handle;
+				std::shared_ptr<AgGeometry> pRenderGeom(new AgGeometry);
+				pRenderGeom->vertex_buffer_handle = vb->m_handle;
+				pRenderGeom->index_buffer_handle = ib->m_handle;
 				const FbxSurfaceMaterial * lMaterial = pMesh->GetNode()->GetMaterial(sub_mesh.m_material_index);
-				_ParseMaterial(&scene_geom, lMaterial);
-				renderNode.m_geometries.push_back(scene_geom);
+				_ParseMaterial(pRenderGeom.get(), lMaterial);
+				AgGeometry::Handle geomHandle = Singleton<AgRenderResourceManager>::instance().m_geometries.append(pRenderGeom);
+				if(AgGeometry::kInvalidHandle != geomHandle)
+					renderNode.m_geometries.push_back(geomHandle);
 			}
 		}
 	}
@@ -842,7 +846,7 @@ namespace ambergris_fbx {
 	}
 
 	FbxDouble3 FbxImportManager::_GetMaterialProperty(
-		AgMesh::Geometry* output,
+		AgGeometry* output,
 		const FbxSurfaceMaterial * pMaterial,
 		const char * pPropertyName,
 		const char * pFactorPropertyName)
@@ -894,7 +898,7 @@ namespace ambergris_fbx {
 		return lResult;
 	}
 
-	void FbxImportManager::_ParseMaterial(AgMesh::Geometry* output, const FbxSurfaceMaterial * pMaterial)
+	void FbxImportManager::_ParseMaterial(AgGeometry* output, const FbxSurfaceMaterial * pMaterial)
 	{
 		if (!output || !pMaterial)
 			return;

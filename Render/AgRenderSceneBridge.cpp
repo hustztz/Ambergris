@@ -1,6 +1,5 @@
 #include "AgRenderMeshBatchEvaluator.h"
 #include "Scene/AgSceneDatabase.h"
-#include "AgRenderer.h"
 
 namespace ambergris {
 
@@ -21,12 +20,10 @@ namespace ambergris {
 
 			if (typeid(*pObj) == typeid(AgMesh))
 			{
-				meshEvaluator.evaluate(pObj);
+				meshEvaluator.evaluate(renderer, pObj);
 			}
 		}
 
-		meshEvaluator.bridgeRenderer(renderer);
-		
 		renderer.m_isEvaluating = false;
 		sceneDB.m_dirty = false;
 		return ret;
