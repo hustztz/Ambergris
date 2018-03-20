@@ -33,7 +33,7 @@ namespace ambergris {
 		const AgRenderNode* getRenderNode(AgGeometry::Handle geom) const;
 
 		void updatePickingView(float* invViewProj, float mouseXNDC, float mouseYNDC, float fov, float nearFrusm, float farFrusm);
-		void enableOcclusionQuery(bool enable);
+		void enableOcclusionQuery(int32_t threshold);
 		void enableHardwarePicking(bool enable);
 		void enableSkySystem(bool enable) { m_pipeline.enableSkySystem(enable); }
 		void updateTime(float time) { m_pipeline.updateTime(time); }
@@ -57,6 +57,6 @@ namespace ambergris {
 		uint32_t		m_pick_reading;
 		uint32_t		m_currFrame;
 
-		bool			m_enableOcclusionCulling;
+		int32_t			m_occlusion_threshold;
 	};
 }

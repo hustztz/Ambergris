@@ -172,7 +172,7 @@ namespace ambergris {
 		const ViewIdArray& mainView,
 		const ViewIdArray& allViews,
 		bgfx::ViewId		pickView,
-		bool occlusionQuery, bool occlusionCulling)
+		int32_t occlusionCulling)
 	{
 		// TODO: multithread
 		for (int i = 0; i < AgRenderQueueManager::E_TYPE_COUNT; i ++)
@@ -187,12 +187,12 @@ namespace ambergris {
 
 					//if(m_occlusionSystem)
 					//	node->draw(occlusionViews, m_occlusionSystem, false/*inOcclusion*/);
-					node->draw(allViews, m_fxSystem, occlusionQuery, occlusionCulling);
+					node->draw(allViews, m_fxSystem, occlusionCulling);
 					if (m_pPicking && m_pPicking->isPicked())
 					{
 						ViewIdArray pickingView;
 						pickingView.push_back(pickView);
-						node->draw(pickingView, m_pPicking, false/*occlusionQuery*/, false/*occlusionCulling*/);//TODO:Picking is not support occlusion(crash)
+						node->draw(pickingView, m_pPicking, -2/*occlusionCulling*/);//TODO:Picking is not support occlusion(crash)
 						m_pick_drawed = true;
 					}
 				}
@@ -211,7 +211,7 @@ namespace ambergris {
 			if (!node || !node->m_dirty)
 				continue;
 
-			node->draw(mainView, m_wireframeSystem, false/*occlusionQuery*/, false/*occlusionCulling*/);
+			node->draw(mainView, m_wireframeSystem, -2/*occlusionCulling*/);
 		}
 
 		for (ViewIdArray::const_iterator view = mainView.cbegin(), viewEnd = mainView.cend(); view != viewEnd; view++)

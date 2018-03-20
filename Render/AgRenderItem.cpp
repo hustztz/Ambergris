@@ -10,6 +10,7 @@ namespace ambergris {
 		, m_ibh(BGFX_INVALID_HANDLE)
 		, m_oqh(BGFX_INVALID_HANDLE)
 		, m_material_handle(AgMaterial::MaterialType::E_LAMBERT)
+		, m_occlusion_threshold(5)
 	{
 	}
 

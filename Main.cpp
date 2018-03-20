@@ -167,6 +167,7 @@ public:
 		m_bSelection = false;
 		m_bSky = false;
 		m_secondViewer = false;
+		m_occlusionThreshold = 1;
 
 		imguiCreate();
 	}
@@ -232,7 +233,11 @@ public:
 			if (occlusionQuerySupported)
 			{
 				ImGui::Checkbox("Occlusion Query", &m_bOcclusionQuery);
-				Singleton<AgRenderer>::instance().enableOcclusionQuery(occlusionQuerySupported && m_bOcclusionQuery);
+				ImGui::SliderInt("Occlusion Threshold", &m_occlusionThreshold, 1, 500);
+				int32_t threshold = -2;
+				if (occlusionQuerySupported && m_bOcclusionQuery)
+					threshold = m_occlusionThreshold;
+				Singleton<AgRenderer>::instance().enableOcclusionQuery(threshold);
 			}
 			
 			bool blitSupport = 0 != (caps->supported & BGFX_CAPS_TEXTURE_BLIT);
@@ -391,6 +396,7 @@ public:
 	bool m_bSelection;
 	bool m_bSky;
 	bool m_bOcclusionQuery;
+	int m_occlusionThreshold;
 	bool m_secondViewer;
 };
 

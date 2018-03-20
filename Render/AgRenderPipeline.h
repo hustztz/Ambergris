@@ -22,7 +22,7 @@ namespace ambergris {
 			const ViewIdArray& mainView,
 			const ViewIdArray& allViews,
 			bgfx::ViewId		pickView,
-			bool occlusionQuery, bool occlusionCulling);
+			int32_t occlusionCulling);
 
 		uint8_t updatePickingResult(bool isSinglePick = true);
 		uint32_t readPickingBlit(bgfx::ViewId view_pass);

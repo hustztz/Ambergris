@@ -8,7 +8,7 @@ namespace ambergris {
 		renderer.m_isEvaluating = true;
 		bool ret = true;
 
-		AgRenderMeshBatchEvaluator meshEvaluator;
+		AgRenderMeshEvaluator meshEvaluator;
 		const int nNodeNum = (const int)sceneDB.getSize();
 		for (int i = 0; i < nNodeNum; i++)
 		{

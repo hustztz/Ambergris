@@ -62,6 +62,7 @@ namespace ambergris {
 		bgfx::IndexBufferHandle		m_ibh;
 		float						m_mtx[16];
 		uint32_t					m_pick_id[3];
+		uint32_t					m_occlusion_threshold;
 		AgMaterial::Handle			m_material_handle;
 		UniformData					m_uniformData[AgShader::MAX_UNIFORM_COUNT];
 	};

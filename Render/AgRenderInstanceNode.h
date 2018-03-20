@@ -26,7 +26,7 @@ namespace ambergris {
 		}
 
 		virtual void destroy() override;
-		virtual void draw(const ViewIdArray& views, AgFxSystem* pFxSystem, bool occlusionQuery, bool occlusionCulling) const override;
+		virtual void draw(const ViewIdArray& views, AgFxSystem* pFxSystem, int32_t occlusionCulling) const override;
 		virtual bool appendGeometry(
 			const float* transform,
 			AgMaterial::Handle material,

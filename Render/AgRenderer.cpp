@@ -17,7 +17,7 @@ namespace ambergris {
 		: m_isEvaluating(false)
 		, m_pick_reading(0)
 		, m_currFrame(UINT32_MAX)
-		, m_enableOcclusionCulling(false)
+		, m_occlusion_threshold(0)
 	{
 		clearNodes();
 	}
@@ -56,7 +56,7 @@ namespace ambergris {
 		m_pipeline.enableHardwarePicking(enable);
 	}
 
-	void AgRenderer::enableOcclusionQuery(bool enable)
+	void AgRenderer::enableOcclusionQuery(int32_t threshold)
 	{
 		//if (enable)
 		//{
@@ -70,7 +70,7 @@ namespace ambergris {
 		//	/*if()
 		//	m_viewPass.m_pass_state[AgRenderPass::E_OCCLUSION_VIEW_SECOND].isValid = false;*///TODO
 		//}
-		m_enableOcclusionCulling = enable;
+		m_occlusion_threshold = threshold;
 	}
 
 	void AgRenderer::evaluateScene()
@@ -177,22 +177,19 @@ namespace ambergris {
 				break;
 			}
 		}
-		bool occlusionQuery = false;
-		bool occlusionCulling = false;
-		if (m_enableOcclusionCulling)
+		int32_t occlusionCulling = -2;
+		if (m_occlusion_threshold > 0)
 		{
 			if (m_currFrame % OCCLUSION_QUERY_FREQ)
 			{
-				occlusionQuery = false;
-				occlusionCulling = true;
+				occlusionCulling = m_occlusion_threshold;
 			}
 			else
 			{
-				occlusionQuery = true;
-				occlusionCulling = false;
+				occlusionCulling = -1;
 			}
 		}
-		m_currFrame = m_pipeline.run(m_renderQueueManager, mainView, allViews, AgRenderPass::E_PASS_ID, occlusionQuery, occlusionCulling);
+		m_currFrame = m_pipeline.run(m_renderQueueManager, mainView, allViews, AgRenderPass::E_PASS_ID, occlusionCulling);
 	}
 
 	void AgRenderer::_UpdatePickingNodes()

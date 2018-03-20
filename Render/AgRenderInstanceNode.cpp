@@ -103,7 +103,7 @@ namespace ambergris {
 	}
 
 	/*virtual*/
-	void AgRenderInstanceNode::draw(const ViewIdArray& views, AgFxSystem* pFxSystem, bool occlusionQuery, bool occlusionCulling) const
+	void AgRenderInstanceNode::draw(const ViewIdArray& views, AgFxSystem* pFxSystem, int32_t occlusionCulling) const
 	{
 		if (!prepare())
 			return;

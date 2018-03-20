@@ -20,7 +20,7 @@ namespace ambergris {
 	}
 
 	/*virtual*/
-	void AgRenderProxyNode::draw(const ViewIdArray& views, AgFxSystem* pFxSystem, bool occlusionQuery, bool occlusionCulling) const
+	void AgRenderProxyNode::draw(const ViewIdArray& views, AgFxSystem* pFxSystem, int32_t occlusionCulling) const
 	{
 		if (!m_pItem)
 			return;
@@ -63,16 +63,18 @@ namespace ambergris {
 
 		bgfx::ProgramHandle progHandle = shader->m_program;
 
-		if (occlusionCulling && bgfx::isValid(m_pItem->m_oqh))
+		if (occlusionCulling > 0 && bgfx::isValid(m_pItem->m_oqh))
 		{
+			uint32_t occlusion_threshold = m_pItem->m_occlusion_threshold * occlusionCulling;
 			for (ViewIdArray::const_iterator view = views.cbegin(), viewEnd = views.cend(); view != viewEnd; view++)
 			{
-				bgfx::setCondition(m_pItem->m_oqh, true);//TODO
+				bgfx::setCondition(m_pItem->m_oqh, true, occlusion_threshold);//TODO
 				bgfx::submit(*view, progHandle, 0, view != viewEnd - 1);
 			}
 		}
-		else if (occlusionQuery && bgfx::isValid(m_pItem->m_oqh))
+		else if (-1 == occlusionCulling && bgfx::isValid(m_pItem->m_oqh))
 		{
+			// occlusionQuery
 			for (ViewIdArray::const_iterator view = views.cbegin(), viewEnd = views.cend(); view != viewEnd; view++)
 			{
 				bgfx::submit(*view, progHandle, m_pItem->m_oqh, 0, view != viewEnd - 1);
