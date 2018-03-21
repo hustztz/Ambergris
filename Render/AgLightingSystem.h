@@ -11,8 +11,7 @@ namespace ambergris {
 		AgLightingSystem() {}
 		virtual ~AgLightingSystem() {}
 
-		virtual bool init() override { return true; }
-		virtual void destroy() override {}
-		virtual void setOverrideResource(const AgShader* shader, void* data) const override;
+		virtual void setPerFrameUniforms() const override;
+		virtual AgShader::Handle getOverrideShader() const override { return AgShader::E_MESH_SHADING; }
 	};
 }

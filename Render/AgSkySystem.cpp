@@ -1,5 +1,6 @@
 #include "AgSkySystem.h"
 #include "Resource/AgRenderResourceManager.h"
+#include "Resource/AgShaderUtils.h"
 
 #include <bx/math.h>
 
@@ -253,9 +254,107 @@ namespace ambergris {
 		{ 23.0f,{ { 0.303f, 0.303f, 0.404f } } }
 	};
 
-	/*virtual*/
+	bool AgSkySystem::_PrepareShader()
+	{
+		{
+			AgShader* landscape_shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(AgShader::E_SKY_LANDSCAPE_SHADER);
+			if (!landscape_shader)
+				return false;
+
+			if (!landscape_shader->m_prepared)
+			{
+				landscape_shader->m_program = shaderUtils::loadProgram("vs_mesh", "fs_sky_landscape");
+				if (!bgfx::isValid(landscape_shader->m_program))
+					return false;
+
+				landscape_shader->m_texture_slots[0].uniform_handle = bgfx::createUniform("s_texColor", bgfx::UniformType::Int1);
+				landscape_shader->m_texture_slots[0].texture_state = AMBERGRIS_TEXTURE_STATE_FILTER;
+				landscape_shader->m_texture_slots[1].uniform_handle = bgfx::createUniform("s_texLightmap", bgfx::UniformType::Int1);
+				landscape_shader->m_uniforms[0].uniform_handle = bgfx::createUniform("u_sunDirection", bgfx::UniformType::Vec4);
+				landscape_shader->m_uniforms[1].uniform_handle = bgfx::createUniform("u_sunLuminance", bgfx::UniformType::Vec4);
+				landscape_shader->m_uniforms[2].uniform_handle = bgfx::createUniform("u_skyLuminance", bgfx::UniformType::Vec4);
+				landscape_shader->m_uniforms[3].uniform_handle = bgfx::createUniform("u_parameters", bgfx::UniformType::Vec4);
+
+				landscape_shader->m_prepared = true;
+			}
+		}
+		
+		{
+			AgShader* landscape_instance_shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(AgShader::E_SKY_LANDSCAPE_INSTANCE_SHADER);
+			if (!landscape_instance_shader)
+				return false;
+
+			if (!landscape_instance_shader->m_prepared)
+			{
+				landscape_instance_shader->m_program = shaderUtils::loadProgram("vs_instancing", "fs_sky_landscape");
+				if (!bgfx::isValid(landscape_instance_shader->m_program))
+					return false;
+
+				landscape_instance_shader->m_texture_slots[0].uniform_handle = bgfx::createUniform("s_texColor", bgfx::UniformType::Int1);
+				landscape_instance_shader->m_texture_slots[0].texture_state = AMBERGRIS_TEXTURE_STATE_FILTER;
+				landscape_instance_shader->m_texture_slots[1].uniform_handle = bgfx::createUniform("s_texLightmap", bgfx::UniformType::Int1);
+				landscape_instance_shader->m_uniforms[0].uniform_handle = bgfx::createUniform("u_sunDirection", bgfx::UniformType::Vec4);
+				landscape_instance_shader->m_uniforms[1].uniform_handle = bgfx::createUniform("u_sunLuminance", bgfx::UniformType::Vec4);
+				landscape_instance_shader->m_uniforms[2].uniform_handle = bgfx::createUniform("u_skyLuminance", bgfx::UniformType::Vec4);
+				landscape_instance_shader->m_uniforms[3].uniform_handle = bgfx::createUniform("u_parameters", bgfx::UniformType::Vec4);
+
+				landscape_instance_shader->m_prepared = true;
+			}
+		}
+		
+		{
+			AgShader* sky_shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(AgShader::E_SKY);
+			if (!sky_shader)
+				return false;
+
+			if (!sky_shader->m_prepared)
+			{
+				sky_shader->m_program = shaderUtils::loadProgram("vs_sky", "fs_sky");
+				if (!bgfx::isValid(sky_shader->m_program))
+					return false;
+
+				sky_shader->m_uniforms[0].uniform_handle = bgfx::createUniform("u_sunDirection", bgfx::UniformType::Vec4);
+				sky_shader->m_uniforms[1].uniform_handle = bgfx::createUniform("u_skyLuminanceXYZ", bgfx::UniformType::Vec4);
+				sky_shader->m_uniforms[2].uniform_handle = bgfx::createUniform("u_parameters", bgfx::UniformType::Vec4);
+				sky_shader->m_uniforms[3].uniform_handle = bgfx::createUniform("u_perezCoeff", bgfx::UniformType::Vec4, 5);
+				sky_shader->m_uniforms[4].uniform_handle = bgfx::createUniform("u_sunLuminance", bgfx::UniformType::Vec4);
+
+				sky_shader->m_prepared = true;
+			}
+		}
+		
+		{
+			AgShader* color_sky_shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(AgShader::E_SKY_COLOR_BANDING);
+			if (!color_sky_shader)
+				return false;
+
+			if (!color_sky_shader->m_prepared)
+			{
+				color_sky_shader->m_program = shaderUtils::loadProgram("vs_sky", "fs_sky_color_banding_fix");
+				if (!bgfx::isValid(color_sky_shader->m_program))
+					return false;
+
+				color_sky_shader->m_uniforms[0].uniform_handle = bgfx::createUniform("u_sunDirection", bgfx::UniformType::Vec4);
+				color_sky_shader->m_uniforms[1].uniform_handle = bgfx::createUniform("u_skyLuminanceXYZ", bgfx::UniformType::Vec4);
+				color_sky_shader->m_uniforms[2].uniform_handle = bgfx::createUniform("u_parameters", bgfx::UniformType::Vec4);
+				color_sky_shader->m_uniforms[3].uniform_handle = bgfx::createUniform("u_perezCoeff", bgfx::UniformType::Vec4, 5);
+				color_sky_shader->m_uniforms[4].uniform_handle = bgfx::createUniform("u_sunLuminance", bgfx::UniformType::Vec4);
+
+				color_sky_shader->m_prepared = true;
+			}
+		}
+		
+		return true;
+	}
+
 	bool AgSkySystem::init()
 	{
+		if (!_PrepareShader())
+		{
+			printf("Failed to load sky shaders.\n");
+			return false;
+		}
+
 		m_sunLuminanceXYZ.SetMap(sunLuminanceXYZTable);
 		m_skyLuminanceXYZ.SetMap(skyLuminanceXYZTable);
 		m_time = 0.0f;
@@ -269,6 +368,11 @@ namespace ambergris {
 			m_lightmapTexture = Singleton<AgRenderResourceManager>::instance().m_textures.append("textures/lightmap.ktx", 0);
 		}
 		return (AgTexture::kInvalidHandle != m_lightmapTexture);
+	}
+
+	void AgSkySystem::destroy()
+	{
+		m_sky.destroy();
 	}
 
 	/*virtual*/
@@ -295,8 +399,9 @@ namespace ambergris {
 	}
 
 	/*virtual*/
-	void AgSkySystem::setOverrideResource(const AgShader* shader, void* data) const
+	void AgSkySystem::setPerFrameUniforms() const
 	{
+		const AgShader* shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(getOverrideShader());
 		if (!shader)
 			return;
 
@@ -318,9 +423,4 @@ namespace ambergris {
 		}
 	}
 
-	/*virtual*/
-	void AgSkySystem::destroy()
-	{
-		m_sky.destroy();
-	}
 }

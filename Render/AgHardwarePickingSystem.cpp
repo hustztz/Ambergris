@@ -1,5 +1,6 @@
 #include "AgHardwarePickingSystem.h"
 #include "Resource/AgRenderResourceManager.h"
+#include "Resource/AgShaderUtils.h"
 #include "Scene/AgSceneDatabase.h"
 
 #include "bx/bx.h"
@@ -28,9 +29,49 @@ namespace ambergris {
 		destroy();
 	}
 
-	/*virtual*/
+	bool AgHardwarePickingSystem::_PrepareShader()
+	{
+		{
+			AgShader* picking_shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(AgShader::E_PICKING_SHADER);
+			if (!picking_shader)
+				return false;
+
+			if (!picking_shader->m_prepared)
+			{
+				picking_shader->m_program = shaderUtils::loadProgram("vs_picking", "fs_picking_id");
+				if (!bgfx::isValid(picking_shader->m_program))
+					return false;
+
+				picking_shader->m_uniforms[0].uniform_handle = bgfx::createUniform("u_id", bgfx::UniformType::Vec4); // ID for drawing into ID buffer
+				picking_shader->m_prepared = true;
+			}
+		}
+		
+		{
+			AgShader* picking_instance_shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(AgShader::E_PICKING_INSTANCE_SHADER);
+			if (!picking_instance_shader)
+				return false;
+
+			if (!picking_instance_shader->m_prepared)
+			{
+				picking_instance_shader->m_program = shaderUtils::loadProgram("vs_pick_instancing", "fs_picking_id");
+				if (!bgfx::isValid(picking_instance_shader->m_program))
+					return false;
+
+				picking_instance_shader->m_prepared = true;
+			}
+		}
+		return true;
+	}
+
 	bool AgHardwarePickingSystem::init()
 	{
+		if (!_PrepareShader())
+		{
+			printf("Failed to load picking shaders.\n");
+			return false;
+		}
+
 		// Set up ID buffer, which has a color target and depth buffer
 		m_pickingRT = bgfx::createTexture2D(ID_DIM, ID_DIM, false, 1, bgfx::TextureFormat::RGBA8, 0
 			| BGFX_TEXTURE_RT
@@ -71,7 +112,6 @@ namespace ambergris {
 		return bgfx::isValid(m_pickingFB);
 	}
 
-	/*virtual*/
 	void AgHardwarePickingSystem::destroy()
 	{
 		if (bgfx::isValid(m_pickingFB))
@@ -93,7 +133,7 @@ namespace ambergris {
 	}
 
 	/*virtual*/
-	void AgHardwarePickingSystem::setOverrideResource(const AgShader* shader, void* data) const
+	void AgHardwarePickingSystem::setPerDrawUniforms(const AgShader* shader, void* data) const
 	{
 		if (!shader || !data)
 			return;

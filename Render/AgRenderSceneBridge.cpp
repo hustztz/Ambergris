@@ -13,10 +13,10 @@ namespace ambergris {
 		for (int i = 0; i < nNodeNum; i++)
 		{
 			AgObject* pObj = sceneDB.get(i);
-			if(!pObj || !pObj->m_dirty)
+			if(!pObj || !pObj->m_prepared)
 				continue;
 
-			pObj->m_dirty = false;
+			//pObj->m_prepared = false;
 
 			if (typeid(*pObj) == typeid(AgMesh))
 			{

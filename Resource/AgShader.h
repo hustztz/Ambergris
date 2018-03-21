@@ -17,6 +17,7 @@ namespace ambergris {
 			E_SIMPLE_SHADER,
 			E_SKY_LANDSCAPE_SHADER,
 			E_PICKING_SHADER,
+			E_SHADOW_INVZ_HARD,
 
 			E_MESH_INSTANCE_SHADER,
 			E_SIMPLE_INSTANCE_SHADER,
@@ -72,7 +73,7 @@ namespace ambergris {
 
 		static const int MAX_TEXTURE_SLOT_COUNT = 4;
 		TextureSlot				m_texture_slots[MAX_TEXTURE_SLOT_COUNT];
-		static const int MAX_UNIFORM_COUNT = 12;
+		static const int MAX_UNIFORM_COUNT = 24;
 		UniformSlot				m_uniforms[MAX_UNIFORM_COUNT];
 		bgfx::ProgramHandle		m_program;
 	};
@@ -80,7 +81,7 @@ namespace ambergris {
 	class AgShaderManager : public AgResourceContainer<AgShader, AgShader::E_COUNT>
 	{
 	public:
-		bool loadShader();
+		bool loadBasicShader();
 		void unloadShader();
 	protected:
 		friend class AgMaterialManager;

@@ -7,6 +7,17 @@
 #include <tinystl/string.h>
 namespace stl = tinystl;
 
+
+#define AMBERGRIS_TEXTURE_STATE_FILTER (0            \
+			| BGFX_TEXTURE_U_CLAMP       \
+			| BGFX_TEXTURE_V_CLAMP     \
+			| BGFX_TEXTURE_W_CLAMP     \
+			| BGFX_TEXTURE_MIN_POINT     \
+			| BGFX_TEXTURE_MIP_POINT     \
+			| BGFX_TEXTURE_MAG_POINT     \
+			)
+
+
 namespace bx {
 	struct FileReaderI;
 	struct AllocatorI;

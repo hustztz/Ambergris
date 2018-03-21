@@ -310,8 +310,10 @@ public:
 				float view[16];
 				m_camera.getViewMtx(view);
 
+				const float camFovy = 60.0f;
+				const float camAspect = float(m_width) / float(m_height);
 				float proj[16];
-				bx::mtxProj(proj, 60.0f, float(m_width) / float(m_height), NEAR_VIEW_CLIP, FAR_VIEW_CLIP, true);// bgfx::getCaps()->homogeneousDepth);
+				bx::mtxProj(proj, camFovy, camAspect, NEAR_VIEW_CLIP, FAR_VIEW_CLIP, true);// bgfx::getCaps()->homogeneousDepth);
 				bgfx::setViewTransform(AgRenderPass::E_VIEW_MAIN, view, proj);
 
 				float backView[16];
@@ -334,7 +336,11 @@ public:
 
 					Singleton<AgRenderer>::instance().updatePickingView(invViewProj, mouseXNDC, mouseYNDC, 3.0f, NEAR_VIEW_CLIP, FAR_VIEW_CLIP);
 				}
+				const float projHeight = 1.0f / bx::tan(bx::toRad(camFovy)*0.5f);
+				const float projWidth = projHeight * camAspect;
+				Singleton<AgRenderer>::instance().updateLights(view, projWidth, projHeight);
 			}
+
 			Singleton<AgRenderer>::instance().updateTime(m_time);
 			Singleton<AgRenderer>::instance().evaluateScene();
 			Singleton<AgRenderer>::instance().runPipeline();

@@ -835,7 +835,7 @@ namespace ambergris_fbx {
 			_ExtractMesh(*sceneMesh, pMesh);
 			m_instance_map.insert(InstanceMap::value_type(pMesh, sceneMesh->m_handle));
 		}
-		sceneMesh->m_dirty = true;
+		sceneMesh->m_prepared = true;
 		agScene.m_dirty = true;
 		// TODO
 		/*std::thread bboxThread(EvaluateBoundingBox, sceneMesh->m_handle);

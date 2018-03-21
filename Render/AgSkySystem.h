@@ -70,12 +70,15 @@ namespace ambergris {
 		AgSkySystem();
 		virtual ~AgSkySystem();
 
-		virtual bool init() override;
-		virtual void destroy() override;
+		bool init();
+		void destroy();
+
 		virtual void auxiliaryDraw() override;
-		virtual void setOverrideResource(const AgShader* shader, void* data) const override;
+		virtual void setPerFrameUniforms() const override;
 		virtual void updateTime(float time) override;
 		virtual AgShader::Handle getOverrideShader() const override { return AgShader::E_SKY_LANDSCAPE_SHADER; }
+	protected:
+		bool _PrepareShader();
 	private:
 		ProceduralSky m_sky;
 		SunController m_sun;

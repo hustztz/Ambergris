@@ -16,9 +16,6 @@ namespace ambergris {
 		AgWireframeSystem() {}
 		virtual ~AgWireframeSystem() {}
 
-		virtual bool init() override { return true; }
-		virtual void destroy() override {}
-		virtual void setOverrideResource(const AgShader* shader, void* data) const override {}
 		virtual bool needTexture() const { return false; }
 		virtual AgShader::Handle getOverrideShader() const override { return AgShader::E_SIMPLE_SHADER; }
 		virtual uint64_t getOverrideStates() const override { return AMBERGRIS_STATE_WIREFRAME; }

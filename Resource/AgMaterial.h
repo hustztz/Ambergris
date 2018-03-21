@@ -20,13 +20,51 @@ namespace ambergris {
 			E_COUNT
 		};
 
-		AgMaterial() : m_state_flags(BGFX_STATE_DEFAULT), m_shader(AgResource::kInvalidHandle) {}
+		union Ambient
+		{
+			struct
+			{
+				float m_r;
+				float m_g;
+				float m_b;
+				float m_unused;
+			};
 
-		AgShader::Handle getShaderHandle() const { return m_shader; }
+			float m_v[4];
+		};
 
+		union Diffuse
+		{
+			struct
+			{
+				float m_r;
+				float m_g;
+				float m_b;
+				float m_unused;
+			};
+
+			float m_v[4];
+		};
+
+		union Specular
+		{
+			struct
+			{
+				float m_r;
+				float m_g;
+				float m_b;
+				float m_ns;
+			};
+
+			float m_v[4];
+		};
+
+		AgMaterial();
+
+		Ambient			m_ka;
+		Diffuse			m_kd;
+		Specular		m_ks;
 		stl::string		m_name;
-		uint64_t        m_state_flags;
-		Handle			m_shader;
 	};
 
 	class AgMaterialManager : public AgResourceContainer<AgMaterial, AgMaterial::E_COUNT>

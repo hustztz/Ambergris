@@ -58,7 +58,6 @@ namespace ambergris {
 			if (!m_wireframeSystem)
 			{
 				m_wireframeSystem = new AgWireframeSystem();
-				m_wireframeSystem->init();
 			}
 		}
 		else
@@ -97,13 +96,14 @@ namespace ambergris {
 			}
 			if (!m_fxSystem)
 			{
-				m_fxSystem = new AgSkySystem();
-				if (!m_fxSystem->init())
+				AgSkySystem* skySystem = new AgSkySystem();
+				if (!skySystem->init())
 				{
 					printf("Sky system failed to init.");
-					delete m_fxSystem;
-					m_fxSystem = nullptr;
+					delete skySystem;
+					skySystem = nullptr;
 				}
+				m_fxSystem = skySystem;
 			}
 		}
 		else
@@ -125,12 +125,13 @@ namespace ambergris {
 			}
 			if (!m_fxSystem)
 			{
-				m_fxSystem = new AgLightingSystem();
-				if (!m_fxSystem->init())
+				AgLightingSystem* lightingSystem = new AgLightingSystem();
+				if (!lightingSystem)
 				{
-					delete m_fxSystem;
-					m_fxSystem = nullptr;
+					delete lightingSystem;
+					lightingSystem = nullptr;
 				}
+				m_fxSystem = lightingSystem;
 			}
 		}
 	}
@@ -182,11 +183,13 @@ namespace ambergris {
 				for (int j = 0; j < renderQueues.m_queues[i].getSize(); ++j)
 				{
 					const AgRenderNode* node = renderQueues.m_queues[i].get(j);
-					if (!node || !node->m_dirty)
+					if (!node || !node->m_prepared)
 						continue;
 
 					//if(m_occlusionSystem)
 					//	node->draw(occlusionViews, m_occlusionSystem, false/*inOcclusion*/);
+					if(m_fxSystem)
+						m_fxSystem->setPerFrameUniforms();
 					node->draw(allViews, m_fxSystem, occlusionCulling);
 					if (m_pPicking && m_pPicking->isPicked())
 					{
@@ -208,7 +211,7 @@ namespace ambergris {
 		for (int i = 0; i < renderQueues.m_queues[AgRenderQueueManager::E_WIREFRAME].getSize(); ++i)
 		{
 			const AgRenderNode* node = renderQueues.m_queues[AgRenderQueueManager::E_WIREFRAME].get(i);
-			if (!node || !node->m_dirty)
+			if (!node || !node->m_prepared)
 				continue;
 
 			node->draw(mainView, m_wireframeSystem, -2/*occlusionCulling*/);

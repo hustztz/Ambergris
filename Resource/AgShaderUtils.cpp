@@ -4,6 +4,8 @@
 #include <bx/bx.h>
 #include <bx/string.h>
 
+#include "BGFX/entry/entry.h"//TODO
+
 namespace ambergris {
 	namespace shaderUtils {
 
@@ -42,6 +44,9 @@ namespace ambergris {
 
 		bgfx::ProgramHandle loadProgram(const char* _vsName, const char* _fsName)
 		{
+			// TODO
+			entry::setCurrentDir("runtime/");
+
 			bgfx::ShaderHandle vsh = loadShader(_vsName);
 			bgfx::ShaderHandle fsh = BGFX_INVALID_HANDLE;
 			if (NULL != _fsName)

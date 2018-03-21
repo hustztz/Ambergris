@@ -5,6 +5,7 @@
 #include "AgIndexBuffer.h"
 #include "AgMaterial.h"
 #include "AgTexture.h"
+#include "AgLight.h"
 #include "AgTextManager.h"
 #include "Foundation/Singleton.h"
 
@@ -20,6 +21,7 @@ namespace ambergris {
 		typedef AgResourcePool<AgIndexBuffer> IndexBufferPool;
 		IndexBufferPool m_index_buffer_pool;
 
+		AgLightManager			m_lights;
 		AgGeometryManager		m_geometries;
 		AgMaterialManager		m_materials;
 		AgShaderManager			m_shaders;

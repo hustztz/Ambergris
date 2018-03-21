@@ -1,11 +1,13 @@
 #include "AgLightingSystem.h"
 #include "Resource/AgShader.h"
+#include "Resource/AgRenderResourceManager.h"
 
 namespace ambergris {
 
 	/*virtual*/
-	void AgLightingSystem::setOverrideResource(const AgShader* shader, void* data) const
+	void AgLightingSystem::setPerFrameUniforms() const
 	{
+		const AgShader* shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(getOverrideShader());
 		if (!shader)
 			return;
 

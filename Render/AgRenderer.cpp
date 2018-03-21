@@ -40,18 +40,18 @@ namespace ambergris {
 
 	void AgRenderer::updatePickingView(float* invViewProj, float mouseXNDC, float mouseYNDC, float fov, float nearFrusm, float farFrusm)
 	{
-		m_pipeline.updatePickingView(AgRenderPass::E_PASS_ID, invViewProj, mouseXNDC, mouseYNDC, fov, nearFrusm, farFrusm);
+		m_pipeline.updatePickingView(AgRenderPass::E_VIEW_ID, invViewProj, mouseXNDC, mouseYNDC, fov, nearFrusm, farFrusm);
 	}
 
 	void AgRenderer::enableHardwarePicking(bool enable)
 	{
 		if (enable)
 		{
-			m_viewPass.init(AgRenderPass::E_PASS_ID);
+			m_viewPass.init(AgRenderPass::E_VIEW_ID);
 		}
 		else
 		{
-			m_viewPass.m_pass_state[AgRenderPass::E_PASS_ID].isValid = false;
+			m_viewPass.m_pass_state[AgRenderPass::E_VIEW_ID].isValid = false;
 		}
 		m_pipeline.enableHardwarePicking(enable);
 	}
@@ -135,8 +135,9 @@ namespace ambergris {
 
 	const AgRenderer::RenderHandle& AgRenderer::getRenderHandle(AgGeometry::Handle geom) const
 	{
+		static AgRenderer::RenderHandle invalidRenderHandle = AgRenderer::RenderHandle();
 		if (geom >= m_geometryMapping.size())
-			return AgRenderer::RenderHandle();
+			return invalidRenderHandle;
 		return m_geometryMapping.at(geom);
 	}
 
@@ -151,7 +152,7 @@ namespace ambergris {
 		}
 		else if (!m_pick_reading)
 		{
-			m_pick_reading = m_pipeline.readPickingBlit(AgRenderPass::E_PASS_BLIT);
+			m_pick_reading = m_pipeline.readPickingBlit(AgRenderPass::E_VIEW_BLIT);
 		}
 
 		m_viewPass.clear();
@@ -159,7 +160,7 @@ namespace ambergris {
 		ViewIdArray mainView;
 		ViewIdArray allViews;
 		ViewIdArray occlusionViews;
-		for (uint16_t i = 0; i < AgRenderPass::E_PASS_COUNT; i++)
+		for (uint16_t i = 0; i < AgRenderPass::E_VIEW_COUNT; i++)
 		{
 			if (!m_viewPass.m_pass_state[i].isValid)
 				continue;
@@ -189,7 +190,7 @@ namespace ambergris {
 				occlusionCulling = -1;
 			}
 		}
-		m_currFrame = m_pipeline.run(m_renderQueueManager, mainView, allViews, AgRenderPass::E_PASS_ID, occlusionCulling);
+		m_currFrame = m_pipeline.run(m_renderQueueManager, mainView, allViews, AgRenderPass::E_VIEW_ID, occlusionCulling);
 	}
 
 	void AgRenderer::_UpdatePickingNodes()
@@ -232,6 +233,17 @@ namespace ambergris {
 					}
 				}
 			}
+		}
+	}
+
+	void AgRenderer::updateLights(float* view, float projWidth, float projHeight)
+	{
+		for (int ii = 0; ii < Singleton<AgRenderResourceManager>::instance().m_lights.getSize(); ii++)
+		{
+			AgLight* light = Singleton<AgRenderResourceManager>::instance().m_lights.get(ii);
+			if(!light)
+				continue;
+			light->computeViewSpaceComponents(view, projWidth, projHeight);
 		}
 	}
 }

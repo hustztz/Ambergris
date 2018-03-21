@@ -13,13 +13,12 @@ namespace ambergris {
 		AgFxSystem() {}
 		virtual ~AgFxSystem() {}
 
-		virtual bool init() = 0;
-		virtual void destroy() = 0;
-		virtual void setOverrideResource(const AgShader* shader, void* data) const = 0;
+		virtual void setPerFrameUniforms() const {}
+		virtual void setPerDrawUniforms(const AgShader* shader, void* data) const {}
 		virtual void auxiliaryDraw() {}
 		virtual void updateTime(float time) {}
 		virtual bool needTexture() const { return true; }
-		virtual AgShader::Handle getOverrideShader() const { return AgShader::E_COUNT; }
+		virtual AgShader::Handle getOverrideShader() const = 0;
 		virtual uint64_t getOverrideStates() const { return 0; }
 	};
 }

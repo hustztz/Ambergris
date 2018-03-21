@@ -44,7 +44,7 @@ namespace ambergris {
 			shaderState = m_renderState;
 		}
 		
-		if (!shader)
+		if (!shader || !shader->m_prepared)
 			return;
 
 		if (!pFxSystem || pFxSystem->needTexture())
@@ -52,7 +52,7 @@ namespace ambergris {
 
 		if (pFxSystem)
 		{
-			pFxSystem->setOverrideResource(shader, nullptr);
+			pFxSystem->setPerDrawUniforms(shader, nullptr);
 		}
 		_SubmitUniform(shader, m_pItem);
 

@@ -11,9 +11,10 @@ namespace ambergris {
 		AgHardwarePickingSystem();
 		~AgHardwarePickingSystem();
 
-		virtual bool init() override;
-		virtual void destroy() override;
-		virtual void setOverrideResource(const AgShader* shader, void* data) const override;
+		bool init();
+		void destroy();
+
+		virtual void setPerDrawUniforms(const AgShader* shader, void* data) const override;
 		virtual bool needTexture() const override { return false; }
 		virtual AgShader::Handle getOverrideShader() const override { return AgShader::E_PICKING_SHADER; }
 
@@ -24,6 +25,7 @@ namespace ambergris {
 		bool isPicked() const { return m_isPicked; }
 		void endPick() { m_isPicked = false; }
 	protected:
+		bool _PrepareShader();
 	private:
 		bgfx::TextureHandle m_pickingRT;
 		bgfx::TextureHandle m_pickingRTDepth;

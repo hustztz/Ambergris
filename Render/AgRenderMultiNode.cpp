@@ -78,18 +78,13 @@ namespace ambergris {
 			shaderState = m_renderState;
 		}
 
-		if (!shader)
+		if (!shader || !shader->m_prepared)
 			return;
 
 		if (pFxSystem && typeid(*pFxSystem) != typeid(AgHardwarePickingSystem))
 		{
 			if (!pFxSystem || pFxSystem->needTexture())
 				_SubmitTexture(shader);
-
-			if (pFxSystem)
-			{
-				pFxSystem->setOverrideResource(shader, nullptr);
-			}
 		}
 
 		bgfx::setState(shaderState);
@@ -108,10 +103,12 @@ namespace ambergris {
 				idsF[1] = item->m_pick_id[1] / 255.0f;
 				idsF[2] = item->m_pick_id[2] / 255.0f;
 				idsF[3] = 1.0f;
-				bgfx::setUniform(shader->m_uniforms[0].uniform_handle, idsF);
+				pFxSystem->setPerDrawUniforms(shader, idsF);
 			}
 			else
 			{
+				if(pFxSystem)
+					pFxSystem->setPerDrawUniforms(shader, nullptr);
 				_SubmitUniform(shader, item);
 			}
 			item->submit();

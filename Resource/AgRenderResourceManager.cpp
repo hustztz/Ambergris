@@ -13,7 +13,7 @@ namespace ambergris {
 
 	bool AgRenderResourceManager::init()
 	{
-		if (!m_shaders.loadShader())
+		if (!m_shaders.loadBasicShader())
 			return false;
 		m_materials.init();
 		if (!m_text.init())

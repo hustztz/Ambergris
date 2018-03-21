@@ -6,19 +6,32 @@ namespace ambergris {
 
 	struct AgRenderPass
 	{
-		enum RenderPassName
+		enum RenderViewName
 		{
 			E_VIEW_MAIN = 0,
-			E_PASS_ID,
-			E_PASS_BLIT,
+			E_VIEW_ID,
+			E_VIEW_BLIT,
 			E_VIEW_SECOND,
+			E_VIEW_SHADOWMAP_0_ID,
+			E_VIEW_SHADOWMAP_1_ID,
+			E_VIEW_SHADOWMAP_2_ID,
+			E_VIEW_SHADOWMAP_3_ID,
+			E_VIEW_SHADOWMAP_4_ID,
+			E_VIEW_VBLUR_0_ID,
+			E_VIEW_HBLUR_0_ID,
+			E_VIEW_VBLUR_1_ID,
+			E_VIEW_HBLUR_1_ID,
+			E_VIEW_VBLUR_2_ID,
+			E_VIEW_HBLUR_2_ID,
+			E_VIEW_VBLUR_3_ID,
+			E_VIEW_HBLUR_3_ID,
 
-			E_PASS_COUNT
+			E_VIEW_COUNT
 		};
 	public:
 		void init(bgfx::ViewId view_id)
 		{
-			if (view_id >= E_PASS_COUNT)
+			if (view_id >= E_VIEW_COUNT)
 				return;
 			if (m_pass_state[view_id].isValid)
 				return;
@@ -27,9 +40,9 @@ namespace ambergris {
 
 			switch (view_id)
 			{
-			case E_PASS_ID:
+			case E_VIEW_ID:
 				// ID buffer clears to black, which represnts clicking on nothing (background)
-				bgfx::setViewClear(E_PASS_ID
+				bgfx::setViewClear(E_VIEW_ID
 					, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH
 					, 0x000000ff
 					, 1.0f
@@ -38,7 +51,7 @@ namespace ambergris {
 				break;
 			case E_VIEW_SECOND:
 				// ID buffer clears to black, which represnts clicking on nothing (background)
-				bgfx::setViewClear(E_PASS_ID
+				bgfx::setViewClear(E_VIEW_ID
 					, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH
 					, 0x202040ff
 					, 1.0f
@@ -60,7 +73,7 @@ namespace ambergris {
 		{
 			// This dummy draw call is here to make sure that view 0 is cleared
 			// if no other draw calls are submitted to view 0.
-			for (uint16_t i = 0; i < E_PASS_COUNT; i++)
+			for (uint16_t i = 0; i < E_VIEW_COUNT; i++)
 			{
 				if (!m_pass_state[i].isValid)
 					continue;
@@ -95,7 +108,7 @@ namespace ambergris {
 			bool			isValid;
 		};
 
-		RenderPassState	m_pass_state[E_PASS_COUNT];
+		RenderPassState	m_pass_state[E_VIEW_COUNT];
 		uint32_t		m_width;
 		uint32_t		m_height;
 	};

@@ -42,7 +42,7 @@ namespace ambergris {
 			res->m_handle = (AgResource::Handle)getSize();
 			//std::lock_guard<std::mutex> lck(m_mutex);
 			m_resource_arr.push_back(res);
-			res->m_dirty = true;
+			res->m_prepared = true;
 			return res->m_handle;
 		}
 
@@ -61,7 +61,7 @@ namespace ambergris {
 			res->m_handle = (AgResource::Handle)getSize();
 			//std::lock_guard<std::mutex> lck(m_mutex);
 			m_resource_arr.push_back(res);
-			res->m_dirty = true;
+			res->m_prepared = true;
 			return res.get();
 		}
 		/*template<>

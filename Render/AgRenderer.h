@@ -37,6 +37,7 @@ namespace ambergris {
 		void enableHardwarePicking(bool enable);
 		void enableSkySystem(bool enable) { m_pipeline.enableSkySystem(enable); }
 		void updateTime(float time) { m_pipeline.updateTime(time); }
+		void updateLights(float* view, float projWidth, float projHeight);
 
 		bgfx::TextureHandle getDebugTexture() const { return m_pipeline.getDebugTexture(); }
 	protected:
