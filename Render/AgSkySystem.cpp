@@ -376,7 +376,13 @@ namespace ambergris {
 	}
 
 	/*virtual*/
-	void AgSkySystem::auxiliaryDraw()
+	void AgSkySystem::begin()
+	{
+		_SetPerFrameUniforms();
+	}
+
+	/*virtual*/
+	void AgSkySystem::end()
 	{
 		AgDynamicValueController::Color sunLuminanceXYZ = m_sunLuminanceXYZ.GetValue(m_time);
 		AgDynamicValueController::Color sunLuminanceRGB = AgDynamicValueController::XYZToRGB(sunLuminanceXYZ);
@@ -398,8 +404,7 @@ namespace ambergris {
 		m_sun.update(m_time);
 	}
 
-	/*virtual*/
-	void AgSkySystem::setPerFrameUniforms() const
+	void AgSkySystem::_SetPerFrameUniforms() const
 	{
 		const AgShader* shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(getOverrideShader());
 		if (!shader)

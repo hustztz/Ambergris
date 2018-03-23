@@ -68,7 +68,7 @@ namespace ambergris {
 	}
 
 	/*virtual*/
-	void AgDirectionalLight::prepareShadowMap(float** lightView, float** lightProj, bool isLinearDepth, uint16_t currentShadowMapSize)
+	void AgDirectionalLight::prepareShadowMap(float(*lightView)[16], float(*lightProj)[16], bool isLinearDepth, uint16_t currentShadowMapSize)
 	{
 		// Setup light view mtx.
 		float eye[3] =

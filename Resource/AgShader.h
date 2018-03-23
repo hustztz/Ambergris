@@ -26,6 +26,11 @@ namespace ambergris {
 
 			E_SKY,
 			E_SKY_COLOR_BANDING,
+			E_SHADOW_BLACK,
+			E_SHADOW_VBLUR,
+			E_SHADOW_HBLUR,
+			E_SHADOW_VBLUR_VSM,
+			E_SHADOW_HBLUR_VSM,
 
 			E_COUNT
 		};
@@ -73,7 +78,7 @@ namespace ambergris {
 
 		static const int MAX_TEXTURE_SLOT_COUNT = 4;
 		TextureSlot				m_texture_slots[MAX_TEXTURE_SLOT_COUNT];
-		static const int MAX_UNIFORM_COUNT = 24;
+		static const int MAX_UNIFORM_COUNT = 30;
 		UniformSlot				m_uniforms[MAX_UNIFORM_COUNT];
 		bgfx::ProgramHandle		m_program;
 	};

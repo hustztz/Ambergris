@@ -9,6 +9,7 @@ namespace ambergris {
 		: m_vbh(BGFX_INVALID_HANDLE)
 		, m_ibh(BGFX_INVALID_HANDLE)
 		, m_oqh(BGFX_INVALID_HANDLE)
+		, m_bbox(AgBoundingbox::kInvalidHandle)
 		, m_material_handle(AgMaterial::MaterialType::E_LAMBERT)
 		, m_occlusion_threshold(5)
 	{

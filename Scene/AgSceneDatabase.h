@@ -1,8 +1,6 @@
 #pragma once
-
 #include "AgMesh.h"
 #include "Foundation/Singleton.h"
-#include "Resource/AgResourcePool.h"
 
 #ifdef USING_TINYSTL
 #include <tinystl/unordered_map.h>
@@ -13,43 +11,12 @@
 
 namespace ambergris {
 
-	struct AgSceneDatabase : public AgResourcePool<AgObject>
+	struct AgSceneDatabase
 	{
 	public:
-		template<typename T>
-		AgObject* allocate(bx::AllocatorI* allocator) {
-			
-			AgObject* pObject = AgResourcePool<AgObject>::allocate<T>(allocator);
-			AgMesh* pMesh = dynamic_cast<AgMesh*>(pObject);
-			if (pMesh)
-			{
-				uint32_t selectID = pMesh->m_pick_id[0] + (pMesh->m_pick_id[1] << 8) + (pMesh->m_pick_id[2] << 16) + (255u << 24);
-				if (m_select_id_map.find(selectID) == m_select_id_map.end())
-				{
-#ifdef USING_TINYSTL
-					m_select_id_map.insert(stl::make_pair<uint32_t, AgObject::Handle>(selectID, pMesh->m_handle));
-#else
-					m_select_id_map[selectID] = pMesh->m_handle;
-#endif
-				}
-				else
-				{
-					// Re-hash
-					pMesh->m_pick_id[0] = (pMesh->m_pick_id[0] + 1) % 256;
-					pMesh->m_pick_id[1] = (pMesh->m_pick_id[1] + 1) % 256;
-					pMesh->m_pick_id[2] = (pMesh->m_pick_id[2] + 1) % 256;
-					selectID = pMesh->m_pick_id[0] + (pMesh->m_pick_id[1] << 8) + (pMesh->m_pick_id[2] << 16) + (255u << 24);
-#ifdef USING_TINYSTL
-					m_select_id_map.insert(stl::make_pair<uint32_t, AgObject::Handle>(selectID, pMesh->m_handle));
-#else
-					m_select_id_map[selectID] = pMesh->m_handle;
-#endif		
-				}
-			}
-			return pObject;
-		}
+		AgObject::Handle appendObject(std::shared_ptr<AgObject> object);
 	private:
-		AgSceneDatabase() : AgResourcePool<AgObject>(), m_dirty(false) {};
+		AgSceneDatabase() {}
 		~AgSceneDatabase() {}
 		friend class Singleton<AgSceneDatabase>;
 	public:
@@ -66,6 +33,6 @@ namespace ambergris {
 #endif
 		SelectResult	m_select_result;
 
-		std::atomic<bool>		m_dirty;
+		AgObjectManager			m_objectManager;
 	};
 }

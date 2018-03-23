@@ -9,6 +9,7 @@
 #include "FBX/FbxImportManager.h"
 #include "Scene/AgSceneDatabase.h"
 #include "Scene/AgCamera.h"
+#include "Resource/AgSpotLight.h"
 
 #include <algorithm>
 #include <thread>
@@ -72,13 +73,16 @@ public:
 		sceneAabb.m_max[0] = std::numeric_limits<float>::min();
 		sceneAabb.m_max[1] = std::numeric_limits<float>::min();
 		sceneAabb.m_max[2] = std::numeric_limits<float>::min();
-		const int nNodeNum = (const int)sceneDB.getSize();
+		const int nNodeNum = (const int)sceneDB.m_objectManager.getSize();
 		for (int i = 0; i < nNodeNum; i++)
 		{
-			const AgMesh* node = dynamic_cast<const AgMesh*>(sceneDB.get(i));
-			if (!node || !node->m_bb.m_initialized)
+			const AgMesh* node = dynamic_cast<const AgMesh*>(sceneDB.m_objectManager.get(i));
+			if (!node)
 				continue;
-			Aabb nodeAabb = node->m_bb.m_aabb;
+			const AgBoundingbox* bbox = Singleton<AgRenderResourceManager>::instance().m_bboxManager.get(node->m_bbox);
+			if (!bbox || !bbox->m_prepared)
+				continue;
+			Aabb nodeAabb = bbox->m_aabb;
 			float tmpAabb[4];
 			tmpAabb[0] = nodeAabb.m_min[0];
 			tmpAabb[1] = nodeAabb.m_min[1];
@@ -138,7 +142,7 @@ public:
 		m_time = 0.0f;
 		m_timeScale = 1.0f;
 
-		Singleton<AgSceneDatabase>::instance().destroy();
+		Singleton<AgSceneDatabase>::instance().m_objectManager.destroy();
 
 		const char* inputFileName = cmdLine.findOption('f');
 #if BGFX_CONFIG_MULTITHREADED
@@ -155,6 +159,8 @@ public:
 		{
 			bgfx::dbgTextPrintf(0, 1, 0x0f, "Failed to initialize resource.");
 		}
+		AgLight* light = Singleton<AgRenderResourceManager>::instance().m_lights.allocate<AgSpotLight>(entry::getAllocator());
+
 		Singleton<AgRenderer>::instance().clearNodes();
 		Singleton<AgRenderer>::instance().m_viewPass.m_width = m_width;
 		Singleton<AgRenderer>::instance().m_viewPass.m_height = m_height;
@@ -166,6 +172,7 @@ public:
 		m_bOcclusionQuery = false;
 		m_bSelection = false;
 		m_bSky = false;
+		m_bShadow = false;
 		m_secondViewer = false;
 		m_occlusionThreshold = 1;
 
@@ -250,6 +257,9 @@ public:
 			Singleton<AgRenderer>::instance().enableSkySystem(m_bSky);
 			ImGui::SliderFloat("Time scale", &m_timeScale, 0.0f, 1.0f);
 			ImGui::SliderFloat("Time", &m_time, 0.0f, 24.0f);
+
+			ImGui::Checkbox("Shadow", &m_bShadow);
+			Singleton<AgRenderer>::instance().enableShadow(m_bShadow);
 			
 			ImGui::Checkbox("Aux Viewer", &m_secondViewer);
 			if (m_secondViewer)
@@ -401,6 +411,7 @@ public:
 
 	bool m_bSelection;
 	bool m_bSky;
+	bool m_bShadow;
 	bool m_bOcclusionQuery;
 	int m_occlusionThreshold;
 	bool m_secondViewer;

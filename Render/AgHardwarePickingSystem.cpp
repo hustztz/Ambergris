@@ -1,4 +1,5 @@
 #include "AgHardwarePickingSystem.h"
+#include "AgRenderItem.h"
 #include "Resource/AgRenderResourceManager.h"
 #include "Resource/AgShaderUtils.h"
 #include "Scene/AgSceneDatabase.h"
@@ -133,12 +134,19 @@ namespace ambergris {
 	}
 
 	/*virtual*/
-	void AgHardwarePickingSystem::setPerDrawUniforms(const AgShader* shader, void* data) const
+	void AgHardwarePickingSystem::setPerDrawUniforms(const AgShader* shader, const AgRenderItem* item) const
 	{
-		if (!shader || !data)
+		if (!shader || !item)
 			return;
 
-		bgfx::setUniform(shader->m_uniforms[0].uniform_handle, data);
+		// Submit ID pass based on mesh ID
+		float idsF[4];
+		idsF[0] = item->m_pick_id[0] / 255.0f;
+		idsF[1] = item->m_pick_id[1] / 255.0f;
+		idsF[2] = item->m_pick_id[2] / 255.0f;
+		idsF[3] = 1.0f;
+
+		bgfx::setUniform(shader->m_uniforms[0].uniform_handle, idsF);
 	}
 
 	void AgHardwarePickingSystem::updateView(

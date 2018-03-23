@@ -1,6 +1,7 @@
 #include "AgRenderPipeline.h"
 #include "AgHardwarePickingSystem.h"
 #include "AgSkySystem.h"
+#include "AgShadowSystem.h"
 #include "AgLightingSystem.h"
 #include "AgWireframeSystem.h"
 #include "AgRenderQueue.h"
@@ -14,6 +15,7 @@ namespace ambergris {
 		, m_wireframeSystem(nullptr)
 		, m_pick_drawed(false)
 	{
+		m_fxSystem = new AgLightingSystem;
 	}
 
 	AgRenderPipeline::~AgRenderPipeline()
@@ -110,7 +112,7 @@ namespace ambergris {
 		{
 			if (m_fxSystem)
 			{
-				if (typeid(*m_fxSystem) == typeid(AgLightingSystem))
+				if (typeid(*m_fxSystem) != typeid(AgSkySystem))
 				{
 					return;
 				}
@@ -125,13 +127,68 @@ namespace ambergris {
 			}
 			if (!m_fxSystem)
 			{
-				AgLightingSystem* lightingSystem = new AgLightingSystem();
-				if (!lightingSystem)
+				m_fxSystem = new AgLightingSystem();
+			}
+		}
+	}
+
+	void AgRenderPipeline::enableShadow(bool enable)
+	{
+		if (enable)
+		{
+			if (m_fxSystem)
+			{
+				if (typeid(*m_fxSystem) == typeid(AgShadowSystem))
 				{
-					delete lightingSystem;
-					lightingSystem = nullptr;
+					return;
 				}
-				m_fxSystem = lightingSystem;
+				else
+				{
+					if (m_fxSystem)
+					{
+						delete m_fxSystem;
+						m_fxSystem = nullptr;
+					}
+				}
+			}
+			if (!m_fxSystem)
+			{
+				AgShadowSystem::SmImpl::Enum	smImpl = AgShadowSystem::SmImpl::Hard;
+				AgShadowSystem::DepthImpl::Enum depthImpl = AgShadowSystem::DepthImpl::InvZ;
+				uint16_t shadowMapSize = 1024;
+				AgLight* light = Singleton<AgRenderResourceManager>::instance().m_lights.get(0);//TODO
+				AgMaterial* material = Singleton<AgRenderResourceManager>::instance().m_materials.get(AgMaterial::E_LAMBERT);//TODO
+				bool blur = false;
+
+				AgShadowSystem* shadowSystem = new AgShadowSystem();
+				if (!shadowSystem->init(smImpl, depthImpl, shadowMapSize, light, material, blur))
+				{
+					printf("Failed to init shadow system.");
+					delete shadowSystem;
+				}
+				m_fxSystem = shadowSystem;
+			}
+		}
+		else
+		{
+			if (m_fxSystem)
+			{
+				if (typeid(*m_fxSystem) != typeid(AgShadowSystem))
+				{
+					return;
+				}
+				else
+				{
+					if (m_fxSystem)
+					{
+						delete m_fxSystem;
+						m_fxSystem = nullptr;
+					}
+				}
+			}
+			if (!m_fxSystem)
+			{
+				m_fxSystem = new AgLightingSystem();
 			}
 		}
 	}
@@ -175,6 +232,27 @@ namespace ambergris {
 		bgfx::ViewId		pickView,
 		int32_t occlusionCulling)
 	{
+		if (m_fxSystem)
+		{
+			m_fxSystem->begin();
+		}
+
+		//Shadow pass
+		AgShadowSystem* shadowSystem = dynamic_cast<AgShadowSystem*>(m_fxSystem);
+		if (shadowSystem)
+		{
+			for (int j = 0; j < renderQueues.m_queues[AgRenderQueueManager::E_STATIC_SCENE_OPAQUE].getSize(); ++j)
+			{
+				const AgRenderNode* node = renderQueues.m_queues[AgRenderQueueManager::E_STATIC_SCENE_OPAQUE].get(j);
+				if (!node || !node->m_prepared)
+					continue;
+
+				shadowSystem->drawPackDepth(node);
+			}
+			shadowSystem->blurShadowMap();
+			shadowSystem->prepareShadowMatrix();
+		}
+
 		// TODO: multithread
 		for (int i = 0; i < AgRenderQueueManager::E_TYPE_COUNT; i ++)
 		{
@@ -186,11 +264,8 @@ namespace ambergris {
 					if (!node || !node->m_prepared)
 						continue;
 
-					//if(m_occlusionSystem)
-					//	node->draw(occlusionViews, m_occlusionSystem, false/*inOcclusion*/);
-					if(m_fxSystem)
-						m_fxSystem->setPerFrameUniforms();
 					node->draw(allViews, m_fxSystem, occlusionCulling);
+
 					if (m_pPicking && m_pPicking->isPicked())
 					{
 						ViewIdArray pickingView;
@@ -204,7 +279,7 @@ namespace ambergris {
 
 		if (m_fxSystem)
 		{
-			m_fxSystem->auxiliaryDraw();
+			m_fxSystem->end();
 		}
 
 		// Wireframe or UI nodes

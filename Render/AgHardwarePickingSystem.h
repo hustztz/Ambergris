@@ -14,7 +14,7 @@ namespace ambergris {
 		bool init();
 		void destroy();
 
-		virtual void setPerDrawUniforms(const AgShader* shader, void* data) const override;
+		virtual void setPerDrawUniforms(const AgShader* shader, const AgRenderItem* item) const override;
 		virtual bool needTexture() const override { return false; }
 		virtual AgShader::Handle getOverrideShader() const override { return AgShader::E_PICKING_SHADER; }
 

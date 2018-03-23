@@ -6,6 +6,7 @@
 #include "AgMaterial.h"
 #include "AgTexture.h"
 #include "AgLight.h"
+#include "AgBoundingBox.h"
 #include "AgTextManager.h"
 #include "Foundation/Singleton.h"
 
@@ -26,6 +27,7 @@ namespace ambergris {
 		AgMaterialManager		m_materials;
 		AgShaderManager			m_shaders;
 		AgTextureManager		m_textures;
+		AgBoundingBoxManager	m_bboxManager;
 		AgTextManager			m_text;
 	private:
 		AgRenderResourceManager();

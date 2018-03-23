@@ -44,6 +44,7 @@ namespace ambergris {
 			if (!renderNode->appendGeometry(
 				mesh->m_global_transform,
 				pGeometry->material_handle,
+				mesh->m_bbox,
 				mesh->m_pick_id,
 				vb->m_decl,
 				vb->m_vertex_buffer.GetData(), vb->m_vertex_buffer.GetSize() * sizeof(uint8_t),

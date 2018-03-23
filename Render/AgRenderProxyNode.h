@@ -16,14 +16,15 @@ namespace ambergris {
 			destroy();
 		}
 
-		virtual void draw(const ViewIdArray& views, AgFxSystem* pFxSystem, int32_t occlusionCulling) const override;
+		virtual void draw(const ViewIdArray& views, const AgFxSystem* pFxSystem, int32_t occlusionCulling) const override;
 		virtual bool appendGeometry(
 			const float* transform,
 			AgMaterial::Handle material,
+			AgBoundingbox::Handle bbox,
 			const uint32_t* pick_id,
 			const bgfx::VertexDecl& decl,
 			const uint8_t* vertBuf, uint32_t vertSize,
-			const uint16_t* indexBuf, uint32_t indexSize);
+			const uint16_t* indexBuf, uint32_t indexSize) override { return false; }
 		virtual const AgRenderItem* getItem(uint16_t id) const override;
 
 		void appendItem(const AgRenderItem* item) { m_pItem = item; }

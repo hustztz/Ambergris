@@ -41,7 +41,7 @@ namespace ambergris {
 				continue;
 
 			if (!bgfx::isValid(shader->m_texture_slots[i].uniform_handle))
-				continue;
+				break;
 
 			bgfx::setTexture(i, shader->m_texture_slots[i].uniform_handle, tex->m_tex_handle, shader->m_texture_slots[i].texture_state);
 		}
@@ -55,7 +55,7 @@ namespace ambergris {
 		for (uint16_t i = 0; i < AgShader::MAX_UNIFORM_COUNT; ++i)
 		{
 			if (!bgfx::isValid(shader->m_uniforms[i].uniform_handle) || !item->m_uniformData[i].data /*|| !item->m_uniformData[i].dirty*/)
-				continue;
+				break;
 			bgfx::setUniform(shader->m_uniforms[i].uniform_handle, item->m_uniformData[i].data);
 			//item->m_uniformData[i].dirty = false;
 		}

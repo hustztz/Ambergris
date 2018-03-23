@@ -5,7 +5,12 @@
 namespace ambergris {
 
 	/*virtual*/
-	void AgLightingSystem::setPerFrameUniforms() const
+	void AgLightingSystem::begin()
+	{
+		_SetPerFrameUniforms();
+	}
+
+	void AgLightingSystem::_SetPerFrameUniforms() const
 	{
 		const AgShader* shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(getOverrideShader());
 		if (!shader)

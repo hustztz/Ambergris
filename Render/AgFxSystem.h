@@ -1,11 +1,14 @@
 #pragma once
 
-#include <stdint.h>
+#include "AgRenderState.h"
 #include "Resource/AgShader.h"
+
+#include <stdint.h>
 
 namespace ambergris {
 
-	struct AgShader;
+	class AgRenderItem;
+	class AgRenderNode;
 
 	class AgFxSystem
 	{
@@ -13,12 +16,12 @@ namespace ambergris {
 		AgFxSystem() {}
 		virtual ~AgFxSystem() {}
 
-		virtual void setPerFrameUniforms() const {}
-		virtual void setPerDrawUniforms(const AgShader* shader, void* data) const {}
-		virtual void auxiliaryDraw() {}
+		virtual void begin() {}
+		virtual void end() {}
+		virtual void setPerDrawUniforms(const AgShader* shader, const AgRenderItem* item) const {}
 		virtual void updateTime(float time) {}
 		virtual bool needTexture() const { return true; }
 		virtual AgShader::Handle getOverrideShader() const = 0;
-		virtual uint64_t getOverrideStates() const { return 0; }
+		virtual AgRenderState getOverrideStates() const { return AgRenderState(); }
 	};
 }

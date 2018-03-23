@@ -75,7 +75,7 @@ namespace ambergris {
 
 	void AgRenderer::evaluateScene()
 	{
-		if (Singleton<AgSceneDatabase>::instance().m_dirty && !Singleton<AgRenderer>::instance().m_isEvaluating)
+		if (Singleton<AgSceneDatabase>::instance().m_objectManager.m_dirty && !Singleton<AgRenderer>::instance().m_isEvaluating)
 		{
 #if BGFX_CONFIG_MULTITHREADED
 			std::thread bridgeThread(AgRenderSceneBridge);
@@ -102,14 +102,15 @@ namespace ambergris {
 		}
 		else
 		{
-			uint64_t state_flags = 0
+			AgRenderState renderState;
+			renderState.m_state = 0
 				| BGFX_STATE_WRITE_RGB
 				| BGFX_STATE_WRITE_A
 				| BGFX_STATE_WRITE_Z
 				| BGFX_STATE_DEPTH_TEST_LESS
 				| BGFX_STATE_CULL_CCW
 				| BGFX_STATE_MSAA;
-			renderNode->setShader(AgShader::E_MESH_SHADING, state_flags);
+			renderNode->setShaderState(renderState);
 			nodeHandle = m_renderQueueManager.m_queues[AgRenderQueueManager::E_STATIC_SCENE_OPAQUE].append(renderNode);
 			queue = AgRenderQueueManager::E_STATIC_SCENE_OPAQUE;
 			
@@ -202,7 +203,7 @@ namespace ambergris {
 
 		for (auto iter = scene.m_select_result.cbegin(); iter != scene.m_select_result.cend(); ++iter)
 		{
-			const AgMesh* pMesh = dynamic_cast<const AgMesh*>(scene.get(*iter));
+			const AgMesh* pMesh = dynamic_cast<const AgMesh*>(scene.m_objectManager.get(*iter));
 			if (!pMesh)
 				continue;
 

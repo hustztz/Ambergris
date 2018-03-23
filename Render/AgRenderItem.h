@@ -3,6 +3,7 @@
 #include "Resource/AgMaterial.h"
 #include "Resource/AgTexture.h"
 #include "Resource/AgShader.h"
+#include "Resource/AgBoundingBox.h"
 
 #include <atomic>
 
@@ -65,5 +66,6 @@ namespace ambergris {
 		uint32_t					m_occlusion_threshold;
 		AgMaterial::Handle			m_material_handle;
 		UniformData					m_uniformData[AgShader::MAX_UNIFORM_COUNT];
+		AgBoundingbox::Handle		m_bbox;
 	};
 }

@@ -8,19 +8,7 @@
 namespace ambergris {
 
 	/*virtual*/
-	bool AgRenderProxyNode::appendGeometry(
-		const float* transform,
-		AgMaterial::Handle material,
-		const uint32_t* pick_id,
-		const bgfx::VertexDecl& decl,
-		const uint8_t* vertBuf, uint32_t vertSize,
-		const uint16_t* indexBuf, uint32_t indexSize)
-	{
-		return false;
-	}
-
-	/*virtual*/
-	void AgRenderProxyNode::draw(const ViewIdArray& views, AgFxSystem* pFxSystem, int32_t occlusionCulling) const
+	void AgRenderProxyNode::draw(const ViewIdArray& views, const AgFxSystem* pFxSystem, int32_t occlusionCulling) const
 	{
 		if (!m_pItem)
 			return;
@@ -28,25 +16,13 @@ namespace ambergris {
 		if (!bgfx::isValid(m_pItem->m_vbh) || !bgfx::isValid(m_pItem->m_ibh))
 			return;
 
-		const AgShader* shader = nullptr;
-		uint64_t shaderState = BGFX_STATE_DEFAULT;
-		if (pFxSystem && AgShader::E_COUNT != pFxSystem->getOverrideShader())
-		{
-			shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(pFxSystem->getOverrideShader());
-			if (pFxSystem->getOverrideStates())
-				shaderState = pFxSystem->getOverrideStates();
-			else
-				shaderState = m_renderState;
-		}
-		else
-		{
-			shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(m_shader);
-			shaderState = m_renderState;
-		}
-		
-		if (!shader || !shader->m_prepared)
+		if (!pFxSystem || AgShader::E_COUNT == pFxSystem->getOverrideShader())
 			return;
 
+		const AgShader* shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(pFxSystem->getOverrideShader());
+		if (!shader || !shader->m_prepared)
+			return;
+		
 		if (!pFxSystem || pFxSystem->needTexture())
 			_SubmitTexture(shader);
 
@@ -56,7 +32,16 @@ namespace ambergris {
 		}
 		_SubmitUniform(shader, m_pItem);
 
-		bgfx::setState(shaderState);
+		if (pFxSystem->getOverrideStates().isDefaultState())
+		{
+			bgfx::setState(m_renderState.m_state, m_renderState.m_blendFactorRgba);
+			bgfx::setStencil(m_renderState.m_fstencil, m_renderState.m_bstencil);
+		}
+		else
+		{
+			bgfx::setState(pFxSystem->getOverrideStates().m_state, pFxSystem->getOverrideStates().m_blendFactorRgba);
+			bgfx::setStencil(pFxSystem->getOverrideStates().m_fstencil, pFxSystem->getOverrideStates().m_bstencil);
+		}
 		m_pItem->submit();
 		// Override transform
 		bgfx::setTransform(m_mtx);

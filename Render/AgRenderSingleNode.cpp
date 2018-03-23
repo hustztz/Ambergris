@@ -1,7 +1,7 @@
 #include "AgRenderSingleNode.h"
 #include "Resource/AgRenderResourceManager.h"
 
-#include "AgHardwarePickingSystem.h"
+#include "AgFxSystem.h"
 
 #include <assert.h>
 
@@ -18,6 +18,7 @@ namespace ambergris {
 	bool AgRenderSingleNode::appendGeometry(
 		const float* transform,
 		AgMaterial::Handle material,
+		AgBoundingbox::Handle bbox,
 		const uint32_t* pick_id,
 		const bgfx::VertexDecl& decl,
 		const uint8_t* vertBuf, uint32_t vertSize,
@@ -34,57 +35,43 @@ namespace ambergris {
 		m_item.setMaterial(material);
 		m_item.setPickID(pick_id);
 		m_item.enableOcclusionQuery();
+		m_item.m_bbox = bbox;
 		return true;
 	}
 
 	/*virtual*/
-	void AgRenderSingleNode::draw(const ViewIdArray& views, AgFxSystem* pFxSystem, int32_t occlusionCulling) const
+	void AgRenderSingleNode::draw(const ViewIdArray& views, const AgFxSystem* pFxSystem, int32_t occlusionCulling) const
 	{
 		if (!bgfx::isValid(m_item.m_vbh) || !bgfx::isValid(m_item.m_ibh))
 			return;
 
-		const AgShader* shader = nullptr;
-		uint64_t shaderState = BGFX_STATE_DEFAULT;
-		if (pFxSystem && AgShader::E_COUNT != pFxSystem->getOverrideShader())
-		{
-			shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(pFxSystem->getOverrideShader());
-			if(pFxSystem->getOverrideStates())
-				shaderState = pFxSystem->getOverrideStates();
-			else
-				shaderState = m_renderState;
-		}
-		else
-		{
-			shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(m_shader);
-			shaderState = m_renderState;
-		}
-		
-		if (!shader || !shader->m_prepared)
+		if (!pFxSystem || AgShader::E_COUNT == pFxSystem->getOverrideShader())
 			return;
 
-		if (pFxSystem && typeid(*pFxSystem) == typeid(AgHardwarePickingSystem))
+		const AgShader* shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(pFxSystem->getOverrideShader());
+		if (!shader || !shader->m_prepared)
+			return;
+		
+		if (!pFxSystem || pFxSystem->needTexture())
+			_SubmitTexture(shader);
+
+		if (pFxSystem)
 		{
-			// Submit ID pass based on mesh ID
-			float idsF[4];
-			idsF[0] = m_item.m_pick_id[0] / 255.0f;
-			idsF[1] = m_item.m_pick_id[1] / 255.0f;
-			idsF[2] = m_item.m_pick_id[2] / 255.0f;
-			idsF[3] = 1.0f;
-			pFxSystem->setPerDrawUniforms(shader, idsF);
+			pFxSystem->setPerDrawUniforms(shader, &m_item);
+		}
+		_SubmitUniform(shader, &m_item);
+
+		if (pFxSystem->getOverrideStates().isDefaultState())
+		{
+			bgfx::setState(m_renderState.m_state, m_renderState.m_blendFactorRgba);
+			bgfx::setStencil(m_renderState.m_fstencil, m_renderState.m_bstencil);
 		}
 		else
 		{
-			if (!pFxSystem || pFxSystem->needTexture())
-				_SubmitTexture(shader);
-
-			if (pFxSystem)
-			{
-				pFxSystem->setPerDrawUniforms(shader, nullptr);
-			}
-			_SubmitUniform(shader, &m_item);
+			bgfx::setState(pFxSystem->getOverrideStates().m_state, pFxSystem->getOverrideStates().m_blendFactorRgba);
+			bgfx::setStencil(pFxSystem->getOverrideStates().m_fstencil, pFxSystem->getOverrideStates().m_bstencil);
 		}
-
-		bgfx::setState(shaderState);
+		
 		m_item.submit();
 
 		bgfx::ProgramHandle progHandle = shader->m_program;

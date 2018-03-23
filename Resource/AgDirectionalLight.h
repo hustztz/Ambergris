@@ -18,7 +18,7 @@ namespace ambergris {
 			m_diffusePower.m_power = 0.4f;
 		}
 
-		virtual void prepareShadowMap(float** lightView, float** lightProj, bool isLinearDepth, uint16_t currentShadowMapSize) override;
+		virtual void prepareShadowMap(float(*view)[16], float(*proj)[16], bool isLinearDepth, uint16_t currentShadowMapSize) override;
 		virtual void computeViewSpaceComponents(float* _viewMtx, float projWidth, float projHeight) override;
 
 		float	m_splitDistribution;

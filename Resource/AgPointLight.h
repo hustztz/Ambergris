@@ -6,14 +6,17 @@ namespace ambergris {
 
 	struct AgPointLight : public AgLight
 	{
-		enum TetrahedronFaces
+		struct TetrahedronFaces
 		{
-			E_TETRA_Green,
-			E_TETRA_Yellow,
-			E_TETRA_Blue,
-			E_TETRA_Red,
+			enum Enum
+			{
+				Green,
+				Yellow,
+				Blue,
+				Red,
 
-			E_TETRA_Count
+				Count
+			};
 		};
 
 		AgPointLight() : AgLight(), m_fovXAdjust(0.0f), m_fovYAdjust(0.0f), m_stencilPack(true) {
@@ -30,11 +33,11 @@ namespace ambergris {
 			m_attenuationSpotOuter.m_outer = 91.0f; //attenuation, spotcutoff
 		}
 
-		virtual void prepareShadowMap(float** lightView, float** lightProj, bool isLinearDepth, uint16_t currentShadowMapSize) override;
+		virtual void prepareShadowMap(float(*view)[16], float(*proj)[16], bool isLinearDepth, uint16_t currentShadowMapSize) override;
 
 		float m_fovXAdjust;
 		float m_fovYAdjust;
 		bool m_stencilPack;
-
+		float m_mtxYpr[TetrahedronFaces::Count][16];
 	};
 }

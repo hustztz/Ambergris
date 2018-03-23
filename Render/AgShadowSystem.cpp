@@ -1,6 +1,7 @@
 #include "AgShadowSystem.h"
-
+#include "AgRenderNode.h"
 #include "AgRenderPass.h"
+#include "AgRenderItem.h"
 #include "Resource/AgDirectionalLight.h"
 #include "Resource/AgPointLight.h"
 #include "Resource/AgSpotLight.h"
@@ -10,29 +11,7 @@
 
 namespace ambergris {
 
-	struct RenderState
-	{
-		enum Enum
-		{
-			Default = 0,
-
-			ShadowMap_PackDepth,
-			ShadowMap_PackDepthHoriz,
-			ShadowMap_PackDepthVert,
-
-			Custom_BlendLightTexture,
-			Custom_DrawPlaneBottom,
-
-			Count
-		};
-
-		uint64_t m_state;
-		uint32_t m_blendFactorRgba;
-		uint32_t m_fstencil;
-		uint32_t m_bstencil;
-	};
-
-	static RenderState s_renderStates[RenderState::Count] =
+	static AgRenderState s_renderStates[AgShadowSystem::ShadowRenderState::Count] =
 	{
 		{ // Default
 			0
@@ -116,15 +95,103 @@ namespace ambergris {
 
 	AgShadowSystem::AgShadowSystem() : 
 		AgFxSystem(),
-		m_smImpl(E_SM_IMPL_Hard),
-		m_depthImpl(E_DEPTH_InvZ),
+		m_smImpl(SmImpl::Hard),
+		m_depthImpl(DepthImpl::InvZ),
 		m_currentShadowMapSize(1024),
 		m_target_num(1),
+		m_renderStateIndex(ShadowRenderState::Default),
+		m_currentPackDepthShader(AgShader::kInvalidHandle),
+		m_currentLightingShader(AgShader::kInvalidHandle),
 		m_flipV(false), m_texelHalf(0.0f)
-	{}
+	{
+		for (uint8_t ii = 0; ii < ShadowMapRenderTargets::Count; ++ii)
+		{
+			m_rtShadowMap[ii].idx = bgfx::kInvalidHandle;
+			m_shadowMap[ii].idx = bgfx::kInvalidHandle;
+		}
+		m_rtBlur.idx = bgfx::kInvalidHandle;
+
+		m_posDecl.begin();
+		m_posDecl.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float);
+		m_posDecl.end();
+	}
 
 	bool AgShadowSystem::_PrepareShader()
 	{
+		{
+			AgShader* black_shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(AgShader::E_SHADOW_BLACK);
+			if (!black_shader)
+				return false;
+
+			if (!black_shader->m_prepared)
+			{
+				black_shader->m_program = shaderUtils::loadProgram("vs_shadowmaps_color", "fs_shadowmaps_color_black");
+				if (!bgfx::isValid(black_shader->m_program))
+					return false;
+
+				black_shader->m_prepared = true;
+			}
+		}
+		{
+			AgShader* vBlur_shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(AgShader::E_SHADOW_VBLUR);
+			if (!vBlur_shader)
+				return false;
+
+			if (!vBlur_shader->m_prepared)
+			{
+				vBlur_shader->m_program = shaderUtils::loadProgram("vs_shadowmaps_vblur", "fs_shadowmaps_vblur");
+				if (!bgfx::isValid(vBlur_shader->m_program))
+					return false;
+
+				vBlur_shader->m_uniforms[0].uniform_handle = bgfx::createUniform("u_smSamplingParams", bgfx::UniformType::Vec4);
+				vBlur_shader->m_prepared = true;
+			}
+		}
+		{
+			AgShader* hBlur_shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(AgShader::E_SHADOW_HBLUR);
+			if (!hBlur_shader)
+				return false;
+
+			if (!hBlur_shader->m_prepared)
+			{
+				hBlur_shader->m_program = shaderUtils::loadProgram("vs_shadowmaps_hblur", "fs_shadowmaps_hblur");
+				if (!bgfx::isValid(hBlur_shader->m_program))
+					return false;
+
+				hBlur_shader->m_uniforms[0].uniform_handle = bgfx::createUniform("u_smSamplingParams", bgfx::UniformType::Vec4);
+				hBlur_shader->m_prepared = true;
+			}
+		}
+		{
+			AgShader* vBlur_vsm_shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(AgShader::E_SHADOW_VBLUR_VSM);
+			if (!vBlur_vsm_shader)
+				return false;
+
+			if (!vBlur_vsm_shader->m_prepared)
+			{
+				vBlur_vsm_shader->m_program = shaderUtils::loadProgram("vs_shadowmaps_vblur", "fs_shadowmaps_vblur_vsm");
+				if (!bgfx::isValid(vBlur_vsm_shader->m_program))
+					return false;
+
+				vBlur_vsm_shader->m_uniforms[0].uniform_handle = bgfx::createUniform("u_smSamplingParams", bgfx::UniformType::Vec4);
+				vBlur_vsm_shader->m_prepared = true;
+			}
+		}
+		{
+			AgShader* hBlur_vsm_shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(AgShader::E_SHADOW_HBLUR_VSM);
+			if (!hBlur_vsm_shader)
+				return false;
+
+			if (!hBlur_vsm_shader->m_prepared)
+			{
+				hBlur_vsm_shader->m_program = shaderUtils::loadProgram("vs_shadowmaps_hblur", "fs_shadowmaps_hblur_vsm");
+				if (!bgfx::isValid(hBlur_vsm_shader->m_program))
+					return false;
+
+				hBlur_vsm_shader->m_uniforms[0].uniform_handle = bgfx::createUniform("u_smSamplingParams", bgfx::UniformType::Vec4);
+				hBlur_vsm_shader->m_prepared = true;
+			}
+		}
 		{
 			AgShader* invz_hard_shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(AgShader::E_SHADOW_INVZ_HARD);
 			if (!invz_hard_shader)
@@ -175,11 +242,17 @@ namespace ambergris {
 
 				invz_hard_shader->m_prepared = true;
 			}
+
+			m_shadowMap[0] = bgfx::createUniform("s_shadowMap0", bgfx::UniformType::Int1);
+			m_shadowMap[1] = bgfx::createUniform("s_shadowMap1", bgfx::UniformType::Int1);
+			m_shadowMap[2] = bgfx::createUniform("s_shadowMap2", bgfx::UniformType::Int1);
+			m_shadowMap[3] = bgfx::createUniform("s_shadowMap3", bgfx::UniformType::Int1);
+
 		}
 		return true;
 	}
 
-	bool AgShadowSystem::init(ShadowMapImpl	smImpl, DepthImpl depthImpl, uint16_t shadowMapSize, AgLight* light, AgMaterial* material, bool blur /*= false*/)
+	bool AgShadowSystem::init(SmImpl::Enum	smImpl, DepthImpl::Enum depthImpl, uint16_t shadowMapSize, AgLight* light, AgMaterial* material, bool blur /*= false*/)
 	{
 		/*if (!light)
 			return false;*/
@@ -213,12 +286,19 @@ namespace ambergris {
 			break;
 		}
 
+		_UpdateSettings();
+
 		float currentShadowMapSizef = float(m_currentShadowMapSize);
 		m_uniforms.m_shadowMapTexelSize = 1.0f / currentShadowMapSizef;
 
 		destroy();
-		
-		if (typeid(AgDirectionalLight) == typeid(*m_light))
+
+		AgDirectionalLight* directionalLight = dynamic_cast<AgDirectionalLight*>(m_light);
+		if (directionalLight)
+		{
+			m_target_num = uint8_t(directionalLight->m_numSplits);
+		}
+		else if (typeid(AgPointLight) == typeid(*m_light))
 		{
 			m_target_num = 4;
 		}
@@ -226,7 +306,7 @@ namespace ambergris {
 		{
 			m_target_num = 1;
 		}
-
+		
 		for (uint8_t ii = 0; ii < m_target_num; ++ii)
 		{
 			bgfx::TextureHandle fbtextures[] =
@@ -236,7 +316,7 @@ namespace ambergris {
 			};
 			m_rtShadowMap[ii] = bgfx::createFrameBuffer(BX_COUNTOF(fbtextures), fbtextures, true);
 		}
-		if(blur && (E_SM_IMPL_VSM == m_smImpl || E_SM_IMPL_ESM == m_smImpl))
+		if(blur && (SmImpl::VSM == m_smImpl || SmImpl::ESM == m_smImpl))
 			m_rtBlur = bgfx::createFrameBuffer(m_currentShadowMapSize, m_currentShadowMapSize, bgfx::TextureFormat::BGRA8);
 
 		return true;
@@ -245,13 +325,19 @@ namespace ambergris {
 	void AgShadowSystem::destroy()
 	{
 		// clear buffer
-		for (uint8_t ii = 0; ii < E_TARGET_Count; ++ii)
+		for (uint8_t ii = 0; ii < ShadowMapRenderTargets::Count; ++ii)
 		{
 			if (bgfx::isValid(m_rtShadowMap[ii]))
 			{
 				bgfx::destroy(m_rtShadowMap[ii]);
 			}
 			m_rtShadowMap[ii].idx = bgfx::kInvalidHandle;
+
+			if (bgfx::isValid(m_shadowMap[ii]))
+			{
+				bgfx::destroy(m_shadowMap[ii]);
+			}
+			m_shadowMap[ii].idx = bgfx::kInvalidHandle;
 		}
 		if (bgfx::isValid(m_rtBlur))
 		{
@@ -260,8 +346,7 @@ namespace ambergris {
 		m_rtBlur.idx = bgfx::kInvalidHandle;
 	}
 
-	/*virtual*/
-	void AgShadowSystem::setPerFrameUniforms() const 
+	void AgShadowSystem::_SetPerFrameUniforms() const 
 	{
 		const AgShader* shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(getOverrideShader());
 		if (!shader)
@@ -300,13 +385,19 @@ namespace ambergris {
 	}
 
 	/*virtual*/
-	void AgShadowSystem::setPerDrawUniforms(const AgShader* shader, void* data) const 
+	void AgShadowSystem::setPerDrawUniforms(const AgShader* shader, const AgRenderItem* item) const
 	{
-		bgfx::setUniform(shader->m_uniforms[16].uniform_handle, m_shadowMapMtx[E_TARGET_First]);
+		if (!shader || !item)
+			return;
+
+		if (m_light && typeid(AgDirectionalLight) == typeid(*m_light))
 		{
-			bgfx::setUniform(shader->m_uniforms[17].uniform_handle, m_shadowMapMtx[E_TARGET_Second]);
-			bgfx::setUniform(shader->m_uniforms[18].uniform_handle, m_shadowMapMtx[E_TARGET_Third]);
-			bgfx::setUniform(shader->m_uniforms[19].uniform_handle, m_shadowMapMtx[E_TARGET_Fourth]);
+			bx::mtxMul(m_lightMtx, item->m_mtx, m_mtxShadow); //not needed for directional light
+		}
+
+		for (uint8_t ii = 0; ii < m_target_num; ++ii)
+		{
+			bgfx::setUniform(shader->m_uniforms[16 + ii].uniform_handle, m_shadowMapMtx[ShadowMapRenderTargets::First + ii]);
 		}
 		
 		bgfx::setUniform(shader->m_uniforms[0].uniform_handle, m_uniforms.m_params0);
@@ -314,13 +405,7 @@ namespace ambergris {
 		bgfx::setUniform(shader->m_uniforms[3].uniform_handle, m_uniforms.m_color);
 	}
 
-	/*virtual*/
-	uint64_t AgShadowSystem::getOverrideStates() const
-	{
-		return s_renderStates[0].m_state;
-	}
-
-	void AgShadowSystem::_UpdateUniforms()
+	void AgShadowSystem::_UpdateSettings()
 	{
 		if (!m_light)
 			return;
@@ -340,9 +425,9 @@ namespace ambergris {
 		}
 		else //spot light
 		{
-			if (E_DEPTH_InvZ == m_depthImpl)
+			if (DepthImpl::InvZ == m_depthImpl)
 			{
-				if (E_SM_IMPL_Hard == m_smImpl)
+				if (SmImpl::Hard == m_smImpl)
 				{
 					m_uniforms.m_shadowMapBias = 0.0035f;
 					m_uniforms.m_shadowMapOffset = 0.0012f;
@@ -371,10 +456,7 @@ namespace ambergris {
 		if (!m_light)
 			return;
 
-		float lightView[E_TARGET_Count][16];
-		float lightProj[E_TARGET_Count][16];
-
-		m_light->prepareShadowMap((float**)lightView, (float**)lightProj, E_DEPTH_Linear == m_depthImpl, m_currentShadowMapSize);
+		m_light->prepareShadowMap(m_lightView, m_lightProj, DepthImpl::Linear == m_depthImpl, m_currentShadowMapSize);
 
 		AgDirectionalLight* directionalLight = dynamic_cast<AgDirectionalLight*>(m_light);
 		if (directionalLight)
@@ -426,7 +508,7 @@ namespace ambergris {
 			bgfx::setViewRect(AgRenderPass::E_VIEW_SHADOWMAP_1_ID, 0, 0, m_currentShadowMapSize, m_currentShadowMapSize);
 
 			bgfx::setViewTransform(AgRenderPass::E_VIEW_SHADOWMAP_0_ID, screenView, screenProj);
-			bgfx::setViewTransform(AgRenderPass::E_VIEW_SHADOWMAP_1_ID, lightView[0], lightProj[AgLight::E_PROJ_Horizontal]);
+			bgfx::setViewTransform(AgRenderPass::E_VIEW_SHADOWMAP_1_ID, m_lightView[0], m_lightProj[AgLight::ProjType::Horizontal]);
 
 			bgfx::setViewFrameBuffer(AgRenderPass::E_VIEW_SHADOWMAP_0_ID, m_rtShadowMap[0]);
 			bgfx::setViewFrameBuffer(AgRenderPass::E_VIEW_SHADOWMAP_1_ID, m_rtShadowMap[0]);
@@ -462,8 +544,8 @@ namespace ambergris {
 			bgfx::setViewRect(AgRenderPass::E_VIEW_SHADOWMAP_0_ID, 0, 0, m_currentShadowMapSize, m_currentShadowMapSize);
 
 			bgfx::setViewTransform(AgRenderPass::E_VIEW_SHADOWMAP_0_ID, screenView, screenProj);
-			bgfx::setViewTransform(AgRenderPass::E_VIEW_SHADOWMAP_1_ID, lightView[AgPointLight::E_TETRA_Green], lightProj[AgLight::E_PROJ_Horizontal]);
-			bgfx::setViewTransform(AgRenderPass::E_VIEW_SHADOWMAP_2_ID, lightView[AgPointLight::E_TETRA_Yellow], lightProj[AgLight::E_PROJ_Horizontal]);
+			bgfx::setViewTransform(AgRenderPass::E_VIEW_SHADOWMAP_1_ID, m_lightView[AgPointLight::TetrahedronFaces::Green], m_lightProj[AgLight::ProjType::Horizontal]);
+			bgfx::setViewTransform(AgRenderPass::E_VIEW_SHADOWMAP_2_ID, m_lightView[AgPointLight::TetrahedronFaces::Yellow], m_lightProj[AgLight::ProjType::Horizontal]);
 
 			if (pointLight->m_stencilPack)
 			{
@@ -474,8 +556,8 @@ namespace ambergris {
 				bgfx::setViewRect(AgRenderPass::E_VIEW_SHADOWMAP_3_ID, 0, 0, h, f);
 				bgfx::setViewRect(AgRenderPass::E_VIEW_SHADOWMAP_4_ID, h, 0, h, f);
 
-				bgfx::setViewTransform(AgRenderPass::E_VIEW_SHADOWMAP_3_ID, lightView[AgPointLight::E_TETRA_Blue], lightProj[AgLight::E_PROJ_Vertical]);
-				bgfx::setViewTransform(AgRenderPass::E_VIEW_SHADOWMAP_4_ID, lightView[AgPointLight::E_TETRA_Red], lightProj[AgLight::E_PROJ_Vertical]);
+				bgfx::setViewTransform(AgRenderPass::E_VIEW_SHADOWMAP_3_ID, m_lightView[AgPointLight::TetrahedronFaces::Blue], m_lightProj[AgLight::ProjType::Vertical]);
+				bgfx::setViewTransform(AgRenderPass::E_VIEW_SHADOWMAP_4_ID, m_lightView[AgPointLight::TetrahedronFaces::Red], m_lightProj[AgLight::ProjType::Vertical]);
 			}
 			else
 			{
@@ -485,8 +567,8 @@ namespace ambergris {
 				bgfx::setViewRect(AgRenderPass::E_VIEW_SHADOWMAP_3_ID, 0, h, h, h);
 				bgfx::setViewRect(AgRenderPass::E_VIEW_SHADOWMAP_4_ID, h, h, h, h);
 
-				bgfx::setViewTransform(AgRenderPass::E_VIEW_SHADOWMAP_3_ID, lightView[AgPointLight::E_TETRA_Blue], lightProj[AgLight::E_PROJ_Horizontal]);
-				bgfx::setViewTransform(AgRenderPass::E_VIEW_SHADOWMAP_4_ID, lightView[AgPointLight::E_TETRA_Red], lightProj[AgLight::E_PROJ_Horizontal]);
+				bgfx::setViewTransform(AgRenderPass::E_VIEW_SHADOWMAP_3_ID, m_lightView[AgPointLight::TetrahedronFaces::Blue], m_lightProj[AgLight::ProjType::Horizontal]);
+				bgfx::setViewTransform(AgRenderPass::E_VIEW_SHADOWMAP_4_ID, m_lightView[AgPointLight::TetrahedronFaces::Red], m_lightProj[AgLight::ProjType::Horizontal]);
 			}
 
 
@@ -536,15 +618,15 @@ namespace ambergris {
 			bgfx::setViewRect(AgRenderPass::E_VIEW_SHADOWMAP_3_ID, 0, 0, m_currentShadowMapSize, m_currentShadowMapSize);
 			bgfx::setViewRect(AgRenderPass::E_VIEW_SHADOWMAP_4_ID, 0, 0, m_currentShadowMapSize, m_currentShadowMapSize);
 
-			bgfx::setViewTransform(AgRenderPass::E_VIEW_SHADOWMAP_1_ID, lightView[0], lightProj[0]);
-			bgfx::setViewTransform(AgRenderPass::E_VIEW_SHADOWMAP_2_ID, lightView[0], lightProj[1]);
-			bgfx::setViewTransform(AgRenderPass::E_VIEW_SHADOWMAP_3_ID, lightView[0], lightProj[2]);
-			bgfx::setViewTransform(AgRenderPass::E_VIEW_SHADOWMAP_4_ID, lightView[0], lightProj[3]);
+			bgfx::setViewTransform(AgRenderPass::E_VIEW_SHADOWMAP_1_ID, m_lightView[0], m_lightProj[0]);
+			bgfx::setViewTransform(AgRenderPass::E_VIEW_SHADOWMAP_2_ID, m_lightView[0], m_lightProj[1]);
+			bgfx::setViewTransform(AgRenderPass::E_VIEW_SHADOWMAP_3_ID, m_lightView[0], m_lightProj[2]);
+			bgfx::setViewTransform(AgRenderPass::E_VIEW_SHADOWMAP_4_ID, m_lightView[0], m_lightProj[3]);
 
-			bgfx::setViewFrameBuffer(AgRenderPass::E_VIEW_SHADOWMAP_1_ID, m_rtShadowMap[0]);
-			bgfx::setViewFrameBuffer(AgRenderPass::E_VIEW_SHADOWMAP_2_ID, m_rtShadowMap[1]);
-			bgfx::setViewFrameBuffer(AgRenderPass::E_VIEW_SHADOWMAP_3_ID, m_rtShadowMap[2]);
-			bgfx::setViewFrameBuffer(AgRenderPass::E_VIEW_SHADOWMAP_4_ID, m_rtShadowMap[3]);
+			for (uint8_t ii = 0; ii < m_target_num; ++ii)
+			{
+				bgfx::setViewFrameBuffer(AgRenderPass::E_VIEW_SHADOWMAP_1_ID + ii, m_rtShadowMap[ii]);
+			}
 
 			if (bgfx::isValid(m_rtBlur))
 			{
@@ -566,15 +648,420 @@ namespace ambergris {
 				bgfx::setViewTransform(AgRenderPass::E_VIEW_VBLUR_3_ID, screenView, screenProj);
 				bgfx::setViewTransform(AgRenderPass::E_VIEW_HBLUR_3_ID, screenView, screenProj);
 
-				bgfx::setViewFrameBuffer(AgRenderPass::E_VIEW_VBLUR_0_ID, m_rtBlur);         //vblur
-				bgfx::setViewFrameBuffer(AgRenderPass::E_VIEW_HBLUR_0_ID, m_rtShadowMap[0]); //hblur
-				bgfx::setViewFrameBuffer(AgRenderPass::E_VIEW_VBLUR_1_ID, m_rtBlur);         //vblur
-				bgfx::setViewFrameBuffer(AgRenderPass::E_VIEW_HBLUR_1_ID, m_rtShadowMap[1]); //hblur
-				bgfx::setViewFrameBuffer(AgRenderPass::E_VIEW_VBLUR_2_ID, m_rtBlur);         //vblur
-				bgfx::setViewFrameBuffer(AgRenderPass::E_VIEW_HBLUR_2_ID, m_rtShadowMap[2]); //hblur
-				bgfx::setViewFrameBuffer(AgRenderPass::E_VIEW_VBLUR_3_ID, m_rtBlur);         //vblur
-				bgfx::setViewFrameBuffer(AgRenderPass::E_VIEW_HBLUR_3_ID, m_rtShadowMap[3]); //hblur
+				for (uint8_t ii = 0; ii < m_target_num; ++ii)
+				{
+					bgfx::setViewFrameBuffer(AgRenderPass::E_VIEW_VBLUR_0_ID + ii * 2, m_rtBlur);         //vblur
+					bgfx::setViewFrameBuffer(AgRenderPass::E_VIEW_HBLUR_0_ID + ii * 2, m_rtShadowMap[ii]); //hblur
+				}
 			}
 		}
+	}
+
+	void AgShadowSystem::_ClearViews() const
+	{
+		if (!m_light)
+			return;
+
+		// Clear shadowmap rendertarget at beginning.
+		const uint8_t flags0 = (typeid(AgDirectionalLight) == typeid(*m_light))
+			? 0
+			: BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH | BGFX_CLEAR_STENCIL
+			;
+
+		bgfx::setViewClear(AgRenderPass::E_VIEW_SHADOWMAP_0_ID
+			, flags0
+			, 0xfefefefe //blur fails on completely white regions
+			, 1.0f
+			, 0
+		);
+		bgfx::touch(AgRenderPass::E_VIEW_SHADOWMAP_0_ID);
+
+		const uint8_t flags1 = (typeid(AgDirectionalLight) == typeid(*m_light))
+			? BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH
+			: 0
+			;
+
+		for (uint8_t ii = 0; ii < 4; ++ii)
+		{
+			bgfx::setViewClear(AgRenderPass::E_VIEW_SHADOWMAP_1_ID + ii
+				, flags1
+				, 0xfefefefe //blur fails on completely white regions
+				, 1.0f
+				, 0
+			);
+			bgfx::touch(AgRenderPass::E_VIEW_SHADOWMAP_1_ID + ii);
+		}
+	}
+
+	struct PosColorTexCoord0Vertex
+	{
+		float m_x;
+		float m_y;
+		float m_z;
+		uint32_t m_rgba;
+		float m_u;
+		float m_v;
+
+		static void init()
+		{
+			ms_decl
+				.begin()
+				.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+				.add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
+				.add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
+				.end();
+		}
+
+		static bgfx::VertexDecl ms_decl;
+	};
+
+	bgfx::VertexDecl PosColorTexCoord0Vertex::ms_decl;
+
+	void screenSpaceQuad(float _texelHalfW, float _texelHalfH, bool _originBottomLeft = true, float _width = 1.0f, float _height = 1.0f)
+	{
+		if (3 == bgfx::getAvailTransientVertexBuffer(3, PosColorTexCoord0Vertex::ms_decl))
+		{
+			bgfx::TransientVertexBuffer vb;
+			bgfx::allocTransientVertexBuffer(&vb, 3, PosColorTexCoord0Vertex::ms_decl);
+			PosColorTexCoord0Vertex* vertex = (PosColorTexCoord0Vertex*)vb.data;
+
+			const float zz = 0.0f;
+
+			const float minx = -_width;
+			const float maxx = _width;
+			const float miny = 0.0f;
+			const float maxy = _height*2.0f;
+
+			const float minu = -1.0f + _texelHalfW;
+			const float maxu = 1.0f + _texelHalfW;
+
+			float minv = _texelHalfH;
+			float maxv = 2.0f + _texelHalfH;
+
+			if (_originBottomLeft)
+			{
+				std::swap(minv, maxv);
+				minv -= 1.0f;
+				maxv -= 1.0f;
+			}
+
+			vertex[0].m_x = minx;
+			vertex[0].m_y = miny;
+			vertex[0].m_z = zz;
+			vertex[0].m_rgba = 0xffffffff;
+			vertex[0].m_u = minu;
+			vertex[0].m_v = minv;
+
+			vertex[1].m_x = maxx;
+			vertex[1].m_y = miny;
+			vertex[1].m_z = zz;
+			vertex[1].m_rgba = 0xffffffff;
+			vertex[1].m_u = maxu;
+			vertex[1].m_v = minv;
+
+			vertex[2].m_x = maxx;
+			vertex[2].m_y = maxy;
+			vertex[2].m_z = zz;
+			vertex[2].m_rgba = 0xffffffff;
+			vertex[2].m_u = maxu;
+			vertex[2].m_v = maxv;
+
+			bgfx::setVertexBuffer(0, &vb);
+		}
+	}
+
+	void AgShadowSystem::_CraftStencilMask() const
+	{
+		AgShader* black_shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(AgShader::E_SHADOW_BLACK);
+		if (!black_shader)
+			return;
+
+		// Craft stencil mask for point light shadow map packing.
+		AgPointLight* pointLight = dynamic_cast<AgPointLight*>(m_light);
+		if (!pointLight || !pointLight->m_stencilPack)
+			return;
+	
+		if (6 == bgfx::getAvailTransientVertexBuffer(6, m_posDecl))
+		{
+			struct Pos
+			{
+				float m_x, m_y, m_z;
+			};
+
+			bgfx::TransientVertexBuffer vb;
+			bgfx::allocTransientVertexBuffer(&vb, 6, m_posDecl);
+			Pos* vertex = (Pos*)vb.data;
+
+			const float min = 0.0f;
+			const float max = 1.0f;
+			const float center = 0.5f;
+			const float zz = 0.0f;
+
+			vertex[0].m_x = min;
+			vertex[0].m_y = min;
+			vertex[0].m_z = zz;
+
+			vertex[1].m_x = max;
+			vertex[1].m_y = min;
+			vertex[1].m_z = zz;
+
+			vertex[2].m_x = center;
+			vertex[2].m_y = center;
+			vertex[2].m_z = zz;
+
+			vertex[3].m_x = center;
+			vertex[3].m_y = center;
+			vertex[3].m_z = zz;
+
+			vertex[4].m_x = max;
+			vertex[4].m_y = max;
+			vertex[4].m_z = zz;
+
+			vertex[5].m_x = min;
+			vertex[5].m_y = max;
+			vertex[5].m_z = zz;
+
+			bgfx::setState(0);
+			bgfx::setStencil(BGFX_STENCIL_TEST_ALWAYS
+				| BGFX_STENCIL_FUNC_REF(1)
+				| BGFX_STENCIL_FUNC_RMASK(0xff)
+				| BGFX_STENCIL_OP_FAIL_S_REPLACE
+				| BGFX_STENCIL_OP_FAIL_Z_REPLACE
+				| BGFX_STENCIL_OP_PASS_Z_REPLACE
+			);
+			bgfx::setVertexBuffer(0, &vb);
+			bgfx::submit(AgRenderPass::E_VIEW_SHADOWMAP_0_ID, black_shader->m_program);
+		}
+	}
+
+	void AgShadowSystem::drawPackDepth(const AgRenderNode* node)
+	{
+		if (!node || !m_light)
+			return;
+
+		// Craft shadow map.
+		AgPointLight* pointLight = dynamic_cast<AgPointLight*>(m_light);
+		// Draw scene into shadowmap.
+		for (uint8_t ii = 0; ii < m_target_num; ++ii)
+		{
+			const uint8_t viewId = AgRenderPass::E_VIEW_SHADOWMAP_1_ID + ii;
+
+			m_renderStateIndex = ShadowRenderState::ShadowMap_PackDepth;
+			if (pointLight && pointLight->m_stencilPack)
+			{
+				m_renderStateIndex = (ii < 2) ? ShadowRenderState::ShadowMap_PackDepthHoriz : ShadowRenderState::ShadowMap_PackDepthVert;
+			}
+
+			// Draw shadow
+			ViewIdArray views;
+			views.push_back(viewId);
+			node->draw(views, this, /*occlusionCulling*/-2);
+		}
+	}
+
+	/*virtual*/
+	bool AgShadowSystem::needTexture() const
+	{
+		return ShadowRenderState::Default == m_renderStateIndex;
+	}
+
+	/*virtual*/
+	AgShader::Handle AgShadowSystem::getOverrideShader() const
+	{
+		return (ShadowRenderState::Default == m_renderStateIndex) ? m_currentLightingShader : m_currentPackDepthShader;
+	}
+
+	/*virtual*/
+	AgRenderState AgShadowSystem::getOverrideStates() const
+	{
+		return s_renderStates[m_renderStateIndex];
+	}
+
+	void AgShadowSystem::blurShadowMap() const
+	{
+		const bool isVSM = (SmImpl::VSM == m_smImpl);
+		AgShader* vBlur_shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(isVSM ? AgShader::E_SHADOW_VBLUR_VSM : AgShader::E_SHADOW_VBLUR);
+		if (!vBlur_shader)
+			return;
+
+		AgShader* hBlur_shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(isVSM ? AgShader::E_SHADOW_HBLUR_VSM : AgShader::E_SHADOW_HBLUR);
+		if (!hBlur_shader)
+			return;
+
+		bool bVsmOrEsm = (SmImpl::VSM == m_smImpl) || (SmImpl::ESM == m_smImpl);
+		if (!bVsmOrEsm || !bgfx::isValid(m_rtBlur))
+			return;
+		
+		float currentShadowMapSizef = float(int16_t(m_currentShadowMapSize));
+
+		bgfx::setTexture(4, m_shadowMap[0], bgfx::getTexture(m_rtShadowMap[0]));
+		bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A);
+		screenSpaceQuad(m_texelHalf / currentShadowMapSizef, m_texelHalf / currentShadowMapSizef, m_flipV);
+		bgfx::submit(AgRenderPass::E_VIEW_VBLUR_0_ID, vBlur_shader->m_program);
+
+		bgfx::setTexture(4, m_shadowMap[0], bgfx::getTexture(m_rtBlur));
+		bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A);
+		screenSpaceQuad(m_texelHalf / currentShadowMapSizef, m_texelHalf / currentShadowMapSizef, m_flipV);
+		bgfx::submit(AgRenderPass::E_VIEW_HBLUR_0_ID, hBlur_shader->m_program);
+
+		if (typeid(AgDirectionalLight) == typeid(*m_light))
+		{
+			for (uint8_t ii = 1, jj = 2; ii < m_target_num; ++ii, jj += 2)
+			{
+				const uint8_t viewId = AgRenderPass::E_VIEW_VBLUR_0_ID + jj;
+
+				bgfx::setTexture(4, m_shadowMap[0], bgfx::getTexture(m_rtShadowMap[ii]));
+				bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A);
+				screenSpaceQuad(m_texelHalf / currentShadowMapSizef, m_texelHalf / currentShadowMapSizef, m_flipV);
+				bgfx::submit(viewId, vBlur_shader->m_program);
+
+				bgfx::setTexture(4, m_shadowMap[0], bgfx::getTexture(m_rtBlur));
+				bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A);
+				screenSpaceQuad(m_texelHalf / currentShadowMapSizef, m_texelHalf / currentShadowMapSizef, m_flipV);
+				bgfx::submit(viewId + 1, hBlur_shader->m_program);
+			}
+		}
+	}
+
+	void AgShadowSystem::prepareShadowMatrix()
+	{
+		_SwitchLightingDrawState();
+
+		// Setup shadow mtx.
+		const float ymul = (m_flipV) ? 0.5f : -0.5f;
+		float zadd = (DepthImpl::Linear == m_depthImpl) ? 0.0f : 0.5f;
+
+		const float mtxBias[16] =
+		{
+			0.5f, 0.0f, 0.0f, 0.0f,
+			0.0f, ymul, 0.0f, 0.0f,
+			0.0f, 0.0f, 0.5f, 0.0f,
+			0.5f, 0.5f, zadd, 1.0f,
+		};
+
+		AgPointLight* pointLight = dynamic_cast<AgPointLight*>(m_light);
+		AgDirectionalLight* directionalLight = dynamic_cast<AgDirectionalLight*>(m_light);
+		if (pointLight)
+		{
+			const float s = (m_flipV) ? 1.0f : -1.0f; //sign
+			zadd = (DepthImpl::Linear == m_depthImpl) ? 0.0f : 0.5f;
+
+			const float mtxCropBias[2][AgPointLight::TetrahedronFaces::Count][16] =
+			{
+				{ // settings.m_stencilPack == false
+
+					{ // D3D: Green, OGL: Blue
+						0.25f,    0.0f, 0.0f, 0.0f,
+						0.0f, s*0.25f, 0.0f, 0.0f,
+						0.0f,    0.0f, 0.5f, 0.0f,
+						0.25f,   0.25f, zadd, 1.0f,
+					},
+					{ // D3D: Yellow, OGL: Red
+						0.25f,    0.0f, 0.0f, 0.0f,
+						0.0f, s*0.25f, 0.0f, 0.0f,
+						0.0f,    0.0f, 0.5f, 0.0f,
+						0.75f,   0.25f, zadd, 1.0f,
+					},
+					{ // D3D: Blue, OGL: Green
+						0.25f,    0.0f, 0.0f, 0.0f,
+						0.0f, s*0.25f, 0.0f, 0.0f,
+						0.0f,    0.0f, 0.5f, 0.0f,
+						0.25f,   0.75f, zadd, 1.0f,
+					},
+					{ // D3D: Red, OGL: Yellow
+						0.25f,    0.0f, 0.0f, 0.0f,
+						0.0f, s*0.25f, 0.0f, 0.0f,
+						0.0f,    0.0f, 0.5f, 0.0f,
+						0.75f,   0.75f, zadd, 1.0f,
+					},
+				},
+				{ // settings.m_stencilPack == true
+
+					{ // D3D: Red, OGL: Blue
+						0.25f,   0.0f, 0.0f, 0.0f,
+						0.0f, s*0.5f, 0.0f, 0.0f,
+						0.0f,   0.0f, 0.5f, 0.0f,
+						0.25f,   0.5f, zadd, 1.0f,
+					},
+					{ // D3D: Blue, OGL: Red
+						0.25f,   0.0f, 0.0f, 0.0f,
+						0.0f, s*0.5f, 0.0f, 0.0f,
+						0.0f,   0.0f, 0.5f, 0.0f,
+						0.75f,   0.5f, zadd, 1.0f,
+					},
+					{ // D3D: Green, OGL: Green
+						0.5f,    0.0f, 0.0f, 0.0f,
+						0.0f, s*0.25f, 0.0f, 0.0f,
+						0.0f,    0.0f, 0.5f, 0.0f,
+						0.5f,   0.75f, zadd, 1.0f,
+					},
+					{ // D3D: Yellow, OGL: Yellow
+						0.5f,    0.0f, 0.0f, 0.0f,
+						0.0f, s*0.25f, 0.0f, 0.0f,
+						0.0f,    0.0f, 0.5f, 0.0f,
+						0.5f,   0.25f, zadd, 1.0f,
+					},
+				}
+			};
+
+			//Use as: [stencilPack][flipV][tetrahedronFace]
+			static const uint8_t cropBiasIndices[2][2][4] =
+			{
+				{ // settings.m_stencilPack == false
+					{ 0, 1, 2, 3 }, //flipV == false
+					{ 2, 3, 0, 1 }, //flipV == true
+				},
+				{ // settings.m_stencilPack == true
+					{ 3, 2, 0, 1 }, //flipV == false
+					{ 2, 3, 0, 1 }, //flipV == true
+				},
+			};
+
+			for (uint8_t ii = 0; ii < AgPointLight::TetrahedronFaces::Count; ++ii)
+			{
+				AgLight::ProjType::Enum projType = (pointLight->m_stencilPack) ? AgLight::ProjType::Enum(ii > 1) : AgLight::ProjType::Horizontal;
+				uint8_t biasIndex = cropBiasIndices[pointLight->m_stencilPack][uint8_t(m_flipV)][ii];
+
+				float mtxTmp[16];
+				bx::mtxMul(mtxTmp, pointLight->m_mtxYpr[ii], m_lightProj[projType]);
+				bx::mtxMul(m_shadowMapMtx[ii], mtxTmp, mtxCropBias[pointLight->m_stencilPack][biasIndex]); //mtxYprProjBias
+			}
+
+			bx::mtxTranslate(m_mtxShadow //lightInvTranslate
+				, -pointLight->m_position.m_v[0]
+				, -pointLight->m_position.m_v[1]
+				, -pointLight->m_position.m_v[2]
+			);
+		}
+		else if(directionalLight)
+		{
+			for (uint8_t ii = 0; ii < directionalLight->m_numSplits; ++ii)
+			{
+				float mtxTmp[16];
+
+				bx::mtxMul(mtxTmp, m_lightProj[ii], mtxBias);
+				bx::mtxMul(m_shadowMapMtx[ii], m_lightView[0], mtxTmp); //lViewProjCropBias
+			}
+		}
+		else /*if (LightType::SpotLight == m_settings.m_lightType)*/
+		{
+			float mtxTmp[16];
+			bx::mtxMul(mtxTmp, m_lightProj[AgLight::ProjType::Horizontal], mtxBias);
+			bx::mtxMul(m_mtxShadow, m_lightView[0], mtxTmp); //lightViewProjBias
+		}
+	}
+	
+	/*virtual*/
+	void AgShadowSystem::begin()
+	{
+		_SetPerFrameUniforms();
+		_UpdateLightTransform();
+		_ClearViews();
+		_CraftStencilMask();
+	}
+
+	/*virtual*/
+	void AgShadowSystem::end()
+	{
 	}
 }

@@ -9,3 +9,13 @@
 ..\tools\shadercRelease.exe -f fs_sky.sc -o ..\runtime\shaders\dx11\fs_sky.bin --depends -i common --varyingdef varying.def.sc --platform windows -p ps_4_0 -O 3 --type fragment -O3
 ..\tools\shadercRelease.exe -f fs_sky_color_banding_fix.sc -o ..\runtime\shaders\dx11\fs_sky_color_banding_fix.bin --depends -i common --varyingdef varying.def.sc --platform windows -p ps_4_0 -O 3 --type fragment -O3
 ..\tools\shadercRelease.exe -f fs_sky_landscape.sc -o ..\runtime\shaders\dx11\fs_sky_landscape.bin --depends -i common --varyingdef varying.def.sc --platform windows -p ps_4_0 -O 3 --type fragment -O3
+..\tools\shadercRelease.exe -f vs_shadowmaps_color.sc -o ..\runtime\shaders\dx11\vs_shadowmaps_color.bin --depends -i common --varyingdef varying.def.sc --platform windows -p vs_4_0 -O 3 --type vertex -O3
+..\tools\shadercRelease.exe -f fs_shadowmaps_color_black.sc -o ..\runtime\shaders\dx11\fs_shadowmaps_color_black.bin --depends -i common --varyingdef varying.def.sc --platform windows -p ps_4_0 -O 3 --type fragment -O3
+..\tools\shadercRelease.exe -f vs_shadowmaps_hblur.sc -o ..\runtime\shaders\dx11\vs_shadowmaps_hblur.bin --depends -i common --varyingdef varying.def.sc --platform windows -p vs_4_0 -O 3 --type vertex -O3
+..\tools\shadercRelease.exe -f vs_shadowmaps_vblur.sc -o ..\runtime\shaders\dx11\vs_shadowmaps_vblur.bin --depends -i common --varyingdef varying.def.sc --platform windows -p vs_4_0 -O 3 --type vertex -O3
+..\tools\shadercRelease.exe -f fs_shadowmaps_hblur.sc -o ..\runtime\shaders\dx11\fs_shadowmaps_hblur.bin --depends -i common --varyingdef varying.def.sc --platform windows -p ps_4_0 -O 3 --type fragment -O3
+..\tools\shadercRelease.exe -f fs_shadowmaps_hblur_vsm.sc -o ..\runtime\shaders\dx11\fs_shadowmaps_hblur_vsm.bin --depends -i common --varyingdef varying.def.sc --platform windows -p ps_4_0 -O 3 --type fragment -O3
+..\tools\shadercRelease.exe -f fs_shadowmaps_vblur.sc -o ..\runtime\shaders\dx11\fs_shadowmaps_vblur.bin --depends -i common --varyingdef varying.def.sc --platform windows -p ps_4_0 -O 3 --type fragment -O3
+..\tools\shadercRelease.exe -f fs_shadowmaps_vblur_vsm.sc -o ..\runtime\shaders\dx11\fs_shadowmaps_vblur_vsm.bin --depends -i common --varyingdef varying.def.sc --platform windows -p ps_4_0 -O 3 --type fragment -O3
+..\tools\shadercRelease.exe -f vs_shadowmaps_color_lighting.sc -o ..\runtime\shaders\dx11\vs_shadowmaps_color_lighting.bin --depends -i common --varyingdef varying.def.sc --platform windows -p vs_4_0 -O 3 --type vertex -O3
+..\tools\shadercRelease.exe -f fs_shadowmaps_color_lighting_hard.sc -o ..\runtime\shaders\dx11\fs_shadowmaps_color_lighting_hard.bin --depends -i common --varyingdef varying.def.sc --platform windows -p ps_4_0 -O 3 --type fragment -O3

@@ -3,8 +3,11 @@
 
 namespace ambergris {
 
-	void AgMesh::evaluateBoundingBox()
+	void AgMesh::evaluateBoundingBox(AgBoundingbox* bbox)
 	{
+		if (!bbox)
+			return;
+
 		for (int i = 0; i < m_geometries.size(); ++i)
 		{
 			const AgGeometry* pGeometry = Singleton<AgRenderResourceManager>::instance().m_geometries.get(m_geometries.at(i));
@@ -26,16 +29,16 @@ namespace ambergris {
 
 			if (minSphere.m_radius > maxSphere.m_radius)
 			{
-				m_bb.m_sphere = maxSphere;
+				bbox->m_sphere = maxSphere;
 			}
 			else
 			{
-				m_bb.m_sphere = minSphere;
+				bbox->m_sphere = minSphere;
 			}
 
-			toAabb(m_bb.m_aabb, vb->m_vertex_buffer.GetData(), vertexNum, stride);
-			calcObb(m_bb.m_obb, vb->m_vertex_buffer.GetData(), vertexNum, stride);
+			toAabb(bbox->m_aabb, vb->m_vertex_buffer.GetData(), vertexNum, stride);
+			calcObb(bbox->m_obb, vb->m_vertex_buffer.GetData(), vertexNum, stride);
 		}
-		m_bb.m_initialized = true;
+		bbox->m_prepared = true;
 	}
 }

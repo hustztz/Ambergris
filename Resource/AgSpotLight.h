@@ -11,7 +11,7 @@ namespace ambergris {
 			m_far = 250.0f;
 		}
 
-		virtual void prepareShadowMap(float** lightView, float** lightProj, bool isLinearDepth, uint16_t currentShadowMapSize) override;
+		virtual void prepareShadowMap(float(*view)[16], float(*proj)[16], bool isLinearDepth, uint16_t currentShadowMapSize) override;
 
 		float m_spotOuterAngle;
 		float m_spotInnerAngle;

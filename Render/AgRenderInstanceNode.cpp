@@ -23,6 +23,7 @@ namespace ambergris {
 	bool AgRenderInstanceNode::appendGeometry(
 		const float* transform,
 		AgMaterial::Handle material,
+		AgBoundingbox::Handle bbox,
 		const uint32_t* pick_id,
 		const bgfx::VertexDecl& decl,
 		const uint8_t* vertBuf, uint32_t vertSize,
@@ -31,6 +32,7 @@ namespace ambergris {
 		bool ret = AgRenderSingleNode::appendGeometry(
 			nullptr,
 			material,
+			AgBoundingbox::kInvalidHandle,
 			nullptr,
 			decl,
 			vertBuf, vertSize,
@@ -38,7 +40,8 @@ namespace ambergris {
 		if (!ret)
 			return false;
 
-		m_prepared = false;
+		// need reprepare
+		m_evaluated = false;
 
 		if (!bgfx::isValid(m_instance_db))
 			m_instance_db = bgfx::createDynamicVertexBuffer(1, ms_inst_decl, BGFX_BUFFER_ALLOW_RESIZE);
@@ -66,14 +69,15 @@ namespace ambergris {
 				return false;
 		}
 		m_instance_buffer.Append(data, size);
-		m_prepared = false;
+		// need reprepare
+		m_evaluated = false;
 		return true;
 	}
 
 	/*virtual*/
 	bool AgRenderInstanceNode::prepare() const
 	{
-		if (m_prepared)
+		if (m_evaluated)
 			return true;
 
 		if (0 == m_stride)
@@ -103,7 +107,7 @@ namespace ambergris {
 	}
 
 	/*virtual*/
-	void AgRenderInstanceNode::draw(const ViewIdArray& views, AgFxSystem* pFxSystem, int32_t occlusionCulling) const
+	void AgRenderInstanceNode::draw(const ViewIdArray& views, const AgFxSystem* pFxSystem, int32_t occlusionCulling) const
 	{
 		if (!prepare())
 			return;
@@ -115,22 +119,10 @@ namespace ambergris {
 		if (0 == numInstances)
 			return;
 
-		const AgShader* shader = nullptr;
-		uint64_t shaderState = BGFX_STATE_DEFAULT;
-		if (pFxSystem && AgShader::E_COUNT != pFxSystem->getOverrideShader())
-		{
-			shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(pFxSystem->getOverrideShader() + AgShader::SHADER_INSTANCE_OFFSET);
-			if (pFxSystem->getOverrideStates())
-				shaderState = pFxSystem->getOverrideStates();
-			else
-				shaderState = m_renderState;
-		}
-		else
-		{
-			shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(m_shader);
-			shaderState = m_renderState;
-		}
+		if (!pFxSystem || AgShader::E_COUNT == pFxSystem->getOverrideShader())
+			return;
 
+		const AgShader* shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(pFxSystem->getOverrideShader() + AgShader::SHADER_INSTANCE_OFFSET);
 		if (!shader || !shader->m_prepared)
 			return;
 
@@ -158,7 +150,16 @@ namespace ambergris {
 		//bgfx::setInstanceDataBuffer(&m_instance_db);
 		bgfx::setInstanceDataBuffer(m_instance_db, 0, numInstances);
 
-		bgfx::setState(shaderState);
+		if (pFxSystem->getOverrideStates().isDefaultState())
+		{
+			bgfx::setState(m_renderState.m_state, m_renderState.m_blendFactorRgba);
+			bgfx::setStencil(m_renderState.m_fstencil, m_renderState.m_bstencil);
+		}
+		else
+		{
+			bgfx::setState(pFxSystem->getOverrideStates().m_state, pFxSystem->getOverrideStates().m_blendFactorRgba);
+			bgfx::setStencil(pFxSystem->getOverrideStates().m_fstencil, pFxSystem->getOverrideStates().m_bstencil);
+		}
 		m_item.submit();
 		for (ViewIdArray::const_iterator view = views.cbegin(), viewEnd = views.cend(); view != viewEnd; view++)
 		{

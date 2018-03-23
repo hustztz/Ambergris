@@ -36,6 +36,7 @@ namespace ambergris {
 		void enableOcclusionQuery(int32_t threshold);
 		void enableHardwarePicking(bool enable);
 		void enableSkySystem(bool enable) { m_pipeline.enableSkySystem(enable); }
+		void enableShadow(bool enable) { m_pipeline.enableShadow(enable); }
 		void updateTime(float time) { m_pipeline.updateTime(time); }
 		void updateLights(float* view, float projWidth, float projHeight);
 

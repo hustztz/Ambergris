@@ -9,79 +9,129 @@ namespace ambergris {
 
 	class AgShadowSystem : public AgFxSystem
 	{
-		enum DepthImpl
+		struct PackDepth
 		{
-			E_DEPTH_InvZ,
-			E_DEPTH_Linear,
+			enum Enum
+			{
+				RGBA,
+				VSM,
 
-			E_DEPTH_Count
+				Count
+			};
 		};
 
-		enum PackDepth
+		struct SmType
 		{
-			E_PACK_RGBA,
-			E_PACK_VSM,
+			enum Enum
+			{
+				Single,
+				Omni,
+				Cascade,
 
-			E_PACK_Count
+				Count
+			};
 		};
 
-		enum ShadowMapImpl
+		struct ShadowMapRenderTargets
 		{
-			E_SM_IMPL_Hard,
-			E_SM_IMPL_PCF,
-			E_SM_IMPL_VSM,
-			E_SM_IMPL_ESM,
+			enum Enum
+			{
+				First,
+				Second,
+				Third,
+				Fourth,
 
-			E_SM_IMPL_Count
+				Count
+			};
+		};
+	public:
+		struct DepthImpl
+		{
+			enum Enum
+			{
+				InvZ,
+				Linear,
+
+				Count
+			};
 		};
 
-		enum ShadowMapType
+		struct SmImpl
 		{
-			E_SM_TYPE_Single,
-			E_SM_TYPE_Omni,
-			E_SM_TYPE_Cascade,
+			enum Enum
+			{
+				Hard,
+				PCF,
+				VSM,
+				ESM,
 
-			E_SM_TYPE_Count
+				Count
+			};
 		};
 
-		enum ShadowMapRenderTargets
+		struct ShadowRenderState
 		{
-			E_TARGET_First,
-			E_TARGET_Second,
-			E_TARGET_Third,
-			E_TARGET_Fourth,
+			enum Enum
+			{
+				Default = 0,
 
-			E_TARGET_Count
+				ShadowMap_PackDepth,
+				ShadowMap_PackDepthHoriz,
+				ShadowMap_PackDepthVert,
+
+				Custom_BlendLightTexture,
+				Custom_DrawPlaneBottom,
+
+				Count
+			};
 		};
 	public:
 		AgShadowSystem();
 		virtual ~AgShadowSystem() { destroy(); }
 
-		bool init(ShadowMapImpl	smImpl, DepthImpl depthImpl, uint16_t shadowMapSize, AgLight* light, AgMaterial* material, bool blur = false);
+		bool init(SmImpl::Enum	smImpl, DepthImpl::Enum depthImpl, uint16_t shadowMapSize, AgLight* light, AgMaterial* material, bool blur = false);
 		void destroy();
 
-		virtual void setPerFrameUniforms() const override;
-		virtual void setPerDrawUniforms(const AgShader* shader, void* data) const override;
-		virtual bool needTexture() const { return false; }
-		virtual AgShader::Handle getOverrideShader() const override { return AgShader::E_SIMPLE_SHADER; }
-		virtual uint64_t getOverrideStates() const override;
+		virtual void begin() override;
+		virtual void end() override;
+		virtual void setPerDrawUniforms(const AgShader* shader, const AgRenderItem* item) const override;
+		virtual bool needTexture() const;
+		virtual AgShader::Handle getOverrideShader() const override;
+		virtual AgRenderState getOverrideStates() const override;
 
+		void drawPackDepth(const AgRenderNode* node);
+		void blurShadowMap() const;
+		void prepareShadowMatrix();
 	protected:
 		bool _PrepareShader();
-		void _UpdateUniforms();
+		void _UpdateSettings();
+		void _SetPerFrameUniforms() const;
 		void _UpdateLightTransform();
+		void _ClearViews() const;
+		void _CraftStencilMask() const;
+		void _SwitchLightingDrawState() { m_renderStateIndex = ShadowRenderState::Default; }
 	private:
-		ShadowMapImpl	m_smImpl;
-		DepthImpl		m_depthImpl;
-		uint16_t		m_currentShadowMapSize;
+		SmImpl::Enum	m_smImpl;
+		DepthImpl::Enum	m_depthImpl;
 		AgLight*		m_light;
 		AgMaterial*		m_material;
 
+		//runtime
+		uint16_t		m_currentShadowMapSize;
 		uint8_t			m_target_num;
-		float			m_lightMtx[16];
-		float			m_shadowMapMtx[E_TARGET_Count][16];
+		ShadowRenderState::Enum	m_renderStateIndex;
+		AgShader::Handle	m_currentPackDepthShader;
+		AgShader::Handle	m_currentLightingShader;
+		float			m_mtxShadow[16];
+		mutable float	m_lightMtx[16];
+		float			m_lightView[ShadowMapRenderTargets::Count][16];
+		float			m_lightProj[ShadowMapRenderTargets::Count][16];
+		float			m_shadowMapMtx[ShadowMapRenderTargets::Count][16];
 
-		bgfx::FrameBufferHandle m_rtShadowMap[E_TARGET_Count];
+		bgfx::VertexDecl m_posDecl;
+
+		bgfx::UniformHandle		m_shadowMap[ShadowMapRenderTargets::Count];
+		bgfx::FrameBufferHandle m_rtShadowMap[ShadowMapRenderTargets::Count];
 		bgfx::FrameBufferHandle m_rtBlur;
 		bool m_flipV;
 		float m_texelHalf;

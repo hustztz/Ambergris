@@ -9,14 +9,14 @@ namespace ambergris {
 		bool ret = true;
 
 		AgRenderMeshEvaluator meshEvaluator;
-		const int nNodeNum = (const int)sceneDB.getSize();
+		const int nNodeNum = (const int)sceneDB.m_objectManager.getSize();
 		for (int i = 0; i < nNodeNum; i++)
 		{
-			AgObject* pObj = sceneDB.get(i);
-			if(!pObj || !pObj->m_prepared)
+			AgObject* pObj = sceneDB.m_objectManager.get(i);
+			if(!pObj || !pObj->m_prepared || !pObj->m_dirty)
 				continue;
 
-			//pObj->m_prepared = false;
+			pObj->m_dirty = false;
 
 			if (typeid(*pObj) == typeid(AgMesh))
 			{
@@ -25,7 +25,7 @@ namespace ambergris {
 		}
 
 		renderer.m_isEvaluating = false;
-		sceneDB.m_dirty = false;
+		sceneDB.m_objectManager.m_dirty = false;
 		return ret;
 	}
 

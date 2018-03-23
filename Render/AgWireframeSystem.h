@@ -18,6 +18,10 @@ namespace ambergris {
 
 		virtual bool needTexture() const { return false; }
 		virtual AgShader::Handle getOverrideShader() const override { return AgShader::E_SIMPLE_SHADER; }
-		virtual uint64_t getOverrideStates() const override { return AMBERGRIS_STATE_WIREFRAME; }
+		virtual AgRenderState getOverrideStates() const override {
+			AgRenderState renderState;
+			renderState.m_state = AMBERGRIS_STATE_WIREFRAME;
+			return renderState;
+		}
 	};
 }

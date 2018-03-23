@@ -1,27 +1,47 @@
 #include "AgSceneDatabase.h"
+#include "Resource/AgRenderResourceManager.h"
+
+#include "BGFX/entry/entry.h"//TODO
 
 namespace ambergris {
 
 	/*virtual*/
-	/*AgResource::Handle AgSceneDatabase::Append(AgNode* node)
+	AgObject::Handle AgSceneDatabase::appendObject(std::shared_ptr<AgObject> object)
 	{
-		if (!node)
-			return;
+		if (!object)
+			return AgObject::kInvalidHandle;
 
-		
+		AgBoundingbox* bbox = Singleton<AgRenderResourceManager>::instance().m_bboxManager.allocate<AgBoundingbox>(entry::getAllocator());
+		if (bbox)
+			object->m_bbox = bbox->m_handle;
 
-
-		int nNodeNum = (int)m_node_arr.size();
-		for (int i = 0; i < nNodeNum; ++i)
+		std::shared_ptr<AgMesh> pMesh = std::dynamic_pointer_cast<AgMesh>(object);
+		if (pMesh)
 		{
-			if (m_node_arr[i].m_mesh_handle == node->m_mesh_handle)
+			uint32_t selectID = pMesh->m_pick_id[0] + (pMesh->m_pick_id[1] << 8) + (pMesh->m_pick_id[2] << 16) + (255u << 24);
+			if (m_select_id_map.find(selectID) == m_select_id_map.end())
 			{
-				node->m_inst_handle = Singleton<RenderResourceManager>::instance().mesh_manager.AppendInstance(node->m_mesh_handle, nNodeNum);
-				m_node_arr[i].m_inst_handle = node->m_inst_handle;
-				break;
+#ifdef USING_TINYSTL
+				m_select_id_map.insert(stl::make_pair<uint32_t, AgObject::Handle>(selectID, pMesh->m_handle));
+#else
+				m_select_id_map[selectID] = pMesh->m_handle;
+#endif
+			}
+			else
+			{
+				// Re-hash
+				pMesh->m_pick_id[0] = (pMesh->m_pick_id[0] + 1) % 256;
+				pMesh->m_pick_id[1] = (pMesh->m_pick_id[1] + 1) % 256;
+				pMesh->m_pick_id[2] = (pMesh->m_pick_id[2] + 1) % 256;
+				selectID = pMesh->m_pick_id[0] + (pMesh->m_pick_id[1] << 8) + (pMesh->m_pick_id[2] << 16) + (255u << 24);
+#ifdef USING_TINYSTL
+				m_select_id_map.insert(stl::make_pair<uint32_t, AgObject::Handle>(selectID, pMesh->m_handle));
+#else
+				m_select_id_map[selectID] = pMesh->m_handle;
+#endif		
 			}
 		}
-		
-		return AgResourceManager<AgNode>::Append(node);
-	}*/
+
+		return m_objectManager.append(object);
+	}
 }

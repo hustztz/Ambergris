@@ -36,11 +36,9 @@ namespace ambergris {
 		_result[15] = 1.0f;
 	}
 
-	/*virtual*/ void AgPointLight::prepareShadowMap(float** lightView, float** lightProj, bool isLinearDepth, uint16_t currentShadowMapSize)
+	/*virtual*/ void AgPointLight::prepareShadowMap(float(*lightView)[16], float(*lightProj)[16], bool isLinearDepth, uint16_t currentShadowMapSize)
 	{
-		float mtxYpr[TetrahedronFaces::E_TETRA_Count][16];
-
-		float ypr[TetrahedronFaces::E_TETRA_Count][3] =
+		float ypr[TetrahedronFaces::Count][3] =
 		{
 			{ bx::toRad(0.0f), bx::toRad(27.36780516f), bx::toRad(0.0f) },
 			{ bx::toRad(180.0f), bx::toRad(27.36780516f), bx::toRad(0.0f) },
@@ -56,7 +54,7 @@ namespace ambergris {
 			const float aspect = bx::tan(bx::toRad(fovx*0.5f)) / bx::tan(bx::toRad(fovy*0.5f));
 
 			bx::mtxProj(
-				lightProj[ProjType::E_PROJ_Vertical]
+				lightProj[ProjType::Vertical]
 				, fovx
 				, aspect
 				, m_near
@@ -67,14 +65,14 @@ namespace ambergris {
 			//For linear depth, prevent depth division by variable w-component in shaders and divide here by far plane
 			if (isLinearDepth)
 			{
-				lightProj[ProjType::E_PROJ_Vertical][10] /= m_far;
-				lightProj[ProjType::E_PROJ_Vertical][14] /= m_far;
+				lightProj[ProjType::Vertical][10] /= m_far;
+				lightProj[ProjType::Vertical][14] /= m_far;
 			}
 
-			ypr[TetrahedronFaces::E_TETRA_Green][2] = bx::toRad(180.0f);
-			ypr[TetrahedronFaces::E_TETRA_Yellow][2] = bx::toRad(0.0f);
-			ypr[TetrahedronFaces::E_TETRA_Blue][2] = bx::toRad(90.0f);
-			ypr[TetrahedronFaces::E_TETRA_Red][2] = bx::toRad(-90.0f);
+			ypr[TetrahedronFaces::Green][2] = bx::toRad(180.0f);
+			ypr[TetrahedronFaces::Yellow][2] = bx::toRad(0.0f);
+			ypr[TetrahedronFaces::Blue][2] = bx::toRad(90.0f);
+			ypr[TetrahedronFaces::Red][2] = bx::toRad(-90.0f);
 		}
 
 		const float fovx = 143.98570868f + 7.8f + m_fovXAdjust;
@@ -82,7 +80,7 @@ namespace ambergris {
 		const float aspect = bx::tan(bx::toRad(fovx*0.5f)) / bx::tan(bx::toRad(fovy*0.5f));
 
 		bx::mtxProj(
-			lightProj[ProjType::E_PROJ_Horizontal]
+			lightProj[ProjType::Horizontal]
 			, fovy
 			, aspect
 			, m_near
@@ -93,12 +91,12 @@ namespace ambergris {
 		//For linear depth, prevent depth division by variable w component in shaders and divide here by far plane
 		if (isLinearDepth)
 		{
-			lightProj[ProjType::E_PROJ_Horizontal][10] /= m_far;
-			lightProj[ProjType::E_PROJ_Horizontal][14] /= m_far;
+			lightProj[ProjType::Horizontal][10] /= m_far;
+			lightProj[ProjType::Horizontal][14] /= m_far;
 		}
 
 
-		for (uint8_t ii = 0; ii < TetrahedronFaces::E_TETRA_Count; ++ii)
+		for (uint8_t ii = 0; ii < TetrahedronFaces::Count; ++ii)
 		{
 			float mtxTmp[16];
 			mtxYawPitchRoll(mtxTmp, ypr[ii][0], ypr[ii][1], ypr[ii][2]);
@@ -110,9 +108,9 @@ namespace ambergris {
 				-bx::vec3Dot(m_position.m_v, &mtxTmp[8]),
 			};
 
-			bx::mtxTranspose(mtxYpr[ii], mtxTmp);
+			bx::mtxTranspose(m_mtxYpr[ii], mtxTmp);
 
-			bx::memCopy(lightView[ii], mtxYpr[ii], 12 * sizeof(float));
+			bx::memCopy(lightView[ii], m_mtxYpr[ii], 12 * sizeof(float));
 			lightView[ii][12] = tmp[0];
 			lightView[ii][13] = tmp[1];
 			lightView[ii][14] = tmp[2];

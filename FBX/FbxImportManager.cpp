@@ -244,9 +244,12 @@ namespace ambergris_fbx {
 
 	static void EvaluateBoundingBox(AgObject::Handle handle)
 	{
-		AgMesh* pMesh = dynamic_cast<AgMesh*>(Singleton<AgSceneDatabase>::instance().get(handle));
-		if(pMesh)
-			pMesh->evaluateBoundingBox();
+		AgMesh* pMesh = dynamic_cast<AgMesh*>(Singleton<AgSceneDatabase>::instance().m_objectManager.get(handle));
+		if (pMesh)
+		{
+			AgBoundingbox* bbox = Singleton<AgRenderResourceManager>::instance().m_bboxManager.get(pMesh->m_bbox);
+			pMesh->evaluateBoundingBox(bbox);
+		}
 	}
 
 	void FbxImportManager::_ExtractMesh(ambergris::AgMesh& renderNode, FbxMesh *pMesh)
@@ -771,9 +774,9 @@ namespace ambergris_fbx {
 		// Output results
 		AgResource::Handle parent_handle = AgResource::kInvalidHandle;
 		AgSceneDatabase& agScene = Singleton<AgSceneDatabase>::instance();
-		for (int i = 0; i < agScene.getSize(); ++i)
+		for (int i = 0; i < agScene.m_objectManager.getSize(); ++i)
 		{
-			const AgMesh* tmpNode = dynamic_cast<const AgMesh*>(agScene.get(i));
+			const AgMesh* tmpNode = dynamic_cast<const AgMesh*>(agScene.m_objectManager.get(i));
 			if(!tmpNode)
 				continue;
 			if (0 == std::strcmp(node->GetParent()->GetName(), tmpNode->m_name.c_str()))
@@ -783,7 +786,7 @@ namespace ambergris_fbx {
 			}
 		}
 
-		AgMesh* sceneMesh = dynamic_cast<AgMesh*>(agScene.allocate<AgMesh>(entry::getAllocator()));
+		std::shared_ptr<AgMesh>sceneMesh(BX_NEW(entry::getAllocator(), AgMesh));
 		if (!sceneMesh)
 			return;
 		sceneMesh->m_name = stl::string(node->GetName());
@@ -821,7 +824,7 @@ namespace ambergris_fbx {
 		auto it_instance = m_instance_map.find(pMesh);
 		if (it_instance != m_instance_map.end())
 		{
-			AgMesh* first_node = dynamic_cast<AgMesh*>(agScene.get(it_instance->second));
+			AgMesh* first_node = dynamic_cast<AgMesh*>(agScene.m_objectManager.get(it_instance->second));
 			assert(first_node);
 			if (first_node)
 			{
@@ -835,12 +838,12 @@ namespace ambergris_fbx {
 			_ExtractMesh(*sceneMesh, pMesh);
 			m_instance_map.insert(InstanceMap::value_type(pMesh, sceneMesh->m_handle));
 		}
-		sceneMesh->m_prepared = true;
-		agScene.m_dirty = true;
+		agScene.appendObject(sceneMesh);
+		agScene.m_objectManager.m_dirty = true;
 		// TODO
 		/*std::thread bboxThread(EvaluateBoundingBox, sceneMesh->m_handle);
 		bboxThread.detach();*/
-		m_meshCBFunc(sceneMesh);
+		//m_meshCBFunc(sceneMesh);
 		
 		return;
 	}

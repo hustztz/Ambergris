@@ -31,6 +31,7 @@ namespace ambergris {
 		void updateTime(float time);
 		void enableHardwarePicking(bool enable);
 		void enableSkySystem(bool enable);
+		void enableShadow(bool enable);
 
 		bgfx::TextureHandle getDebugTexture() const;
 	protected:

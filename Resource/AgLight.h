@@ -17,12 +17,15 @@ namespace ambergris {
 			E_COUNT
 		};
 
-		enum ProjType
+		struct ProjType
 		{
-			E_PROJ_Horizontal,
-			E_PROJ_Vertical,
+			enum Enum
+			{
+				Horizontal,
+				Vertical,
 
-			E_PROJ_Count
+				Count
+			};
 		};
 
 		union Position
@@ -90,7 +93,7 @@ namespace ambergris {
 		}
 
 		virtual ~AgLight(){}
-		virtual void prepareShadowMap(float** view, float** proj, bool isLinearDepth, uint16_t currentShadowMapSize) {}
+		virtual void prepareShadowMap(float (*view)[16], float (*proj)[16], bool isLinearDepth, uint16_t currentShadowMapSize) {}
 		virtual void computeViewSpaceComponents(float* _viewMtx, float projWidth, float projHeight)
 		{
 			bx::vec4MulMtx(m_position_viewSpace, m_position.m_v, _viewMtx);

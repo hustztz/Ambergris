@@ -21,7 +21,7 @@ namespace ambergris {
 			m_pick_id[1] = mwc.gen() % 256;
 			m_pick_id[2] = mwc.gen() % 256;
 		};
-		void evaluateBoundingBox();
+		void evaluateBoundingBox(AgBoundingbox* bbox);
 
 		
 #ifdef USING_TINYSTL
