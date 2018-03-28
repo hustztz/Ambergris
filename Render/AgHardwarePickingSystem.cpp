@@ -37,14 +37,14 @@ namespace ambergris {
 			if (!picking_shader)
 				return false;
 
-			if (!picking_shader->m_prepared)
+			if (AgShader::kInvalidHandle == picking_shader->m_handle)
 			{
 				picking_shader->m_program = shaderUtils::loadProgram("vs_picking", "fs_picking_id");
 				if (!bgfx::isValid(picking_shader->m_program))
 					return false;
 
 				picking_shader->m_uniforms[0].uniform_handle = bgfx::createUniform("u_id", bgfx::UniformType::Vec4); // ID for drawing into ID buffer
-				picking_shader->m_prepared = true;
+				picking_shader->m_handle = AgShader::E_PICKING_SHADER;
 			}
 		}
 		
@@ -53,13 +53,13 @@ namespace ambergris {
 			if (!picking_instance_shader)
 				return false;
 
-			if (!picking_instance_shader->m_prepared)
+			if (AgShader::kInvalidHandle == picking_instance_shader->m_handle)
 			{
 				picking_instance_shader->m_program = shaderUtils::loadProgram("vs_pick_instancing", "fs_picking_id");
 				if (!bgfx::isValid(picking_instance_shader->m_program))
 					return false;
 
-				picking_instance_shader->m_prepared = true;
+				picking_instance_shader->m_handle = AgShader::E_PICKING_INSTANCE_SHADER;
 			}
 		}
 		return true;

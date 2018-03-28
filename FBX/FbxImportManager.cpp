@@ -247,8 +247,7 @@ namespace ambergris_fbx {
 		AgMesh* pMesh = dynamic_cast<AgMesh*>(Singleton<AgSceneDatabase>::instance().m_objectManager.get(handle));
 		if (pMesh)
 		{
-			AgBoundingbox* bbox = Singleton<AgRenderResourceManager>::instance().m_bboxManager.get(pMesh->m_bbox);
-			pMesh->evaluateBoundingBox(bbox);
+			pMesh->evaluateBoundingBox();
 		}
 	}
 
@@ -683,8 +682,8 @@ namespace ambergris_fbx {
 		// To ag database
 		if (subMeshes.empty())
 		{
-			AgVertexBuffer* vb = Singleton<AgRenderResourceManager>::instance().m_vertex_buffer_pool.allocate<AgVertexBuffer>(entry::getAllocator());
-			AgIndexBuffer* ib = Singleton<AgRenderResourceManager>::instance().m_index_buffer_pool.allocate<AgIndexBuffer>(entry::getAllocator());
+			std::shared_ptr<AgVertexBuffer> vb(BX_NEW(entry::getAllocator(), AgVertexBuffer));
+			std::shared_ptr<AgIndexBuffer> ib(BX_NEW(entry::getAllocator(), AgIndexBuffer));
 			if (vb && ib)
 			{
 				ib->m_bAllByControlPoint = fbxMesh.m_bAllByControlPoint;
@@ -693,11 +692,14 @@ namespace ambergris_fbx {
 				vb->m_vertex_buffer = fbxMesh.m_vertex_buffer;
 				std::shared_ptr<AgGeometry> pRenderGeom(new AgGeometry);
 				pRenderGeom->material_handle = AgMaterial::E_LAMBERT;
-				pRenderGeom->vertex_buffer_handle = vb->m_handle;
-				pRenderGeom->index_buffer_handle = ib->m_handle;
-				AgGeometry::Handle geomHandle = Singleton<AgRenderResourceManager>::instance().m_geometries.append(pRenderGeom);
-				if (AgGeometry::kInvalidHandle != geomHandle)
-					renderNode.m_geometries.push_back(geomHandle);
+				pRenderGeom->vertex_buffer_handle = Singleton<AgRenderResourceManager>::instance().m_vertex_buffer_pool.append(vb);
+				pRenderGeom->index_buffer_handle = Singleton<AgRenderResourceManager>::instance().m_index_buffer_pool.append(ib);
+				if (AgVertexBuffer::kInvalidHandle != pRenderGeom->vertex_buffer_handle && AgIndexBuffer::kInvalidHandle != pRenderGeom->index_buffer_handle)
+				{
+					AgGeometry::Handle geomHandle = Singleton<AgRenderResourceManager>::instance().m_geometries.append(pRenderGeom);
+					if (AgGeometry::kInvalidHandle != geomHandle)
+						renderNode.m_geometries.push_back(geomHandle);
+				}
 			}
 		}
 		else
@@ -710,8 +712,8 @@ namespace ambergris_fbx {
 				if(0 == nSubMeshPolyCount)
 					continue;
 
-				AgVertexBuffer* vb = Singleton<AgRenderResourceManager>::instance().m_vertex_buffer_pool.allocate<AgVertexBuffer>(entry::getAllocator());
-				AgIndexBuffer* ib = Singleton<AgRenderResourceManager>::instance().m_index_buffer_pool.allocate<AgIndexBuffer>(entry::getAllocator());
+				std::shared_ptr<AgVertexBuffer> vb(BX_NEW(entry::getAllocator(), AgVertexBuffer));
+				std::shared_ptr<AgIndexBuffer> ib(BX_NEW(entry::getAllocator(), AgIndexBuffer));
 				if (!vb || !ib)
 					break;
 
@@ -749,9 +751,9 @@ namespace ambergris_fbx {
 					}
 				}
 
-				std::shared_ptr<AgGeometry> pRenderGeom(new AgGeometry);
-				pRenderGeom->vertex_buffer_handle = vb->m_handle;
-				pRenderGeom->index_buffer_handle = ib->m_handle;
+				std::shared_ptr<AgGeometry> pRenderGeom(BX_NEW(entry::getAllocator(), AgGeometry));
+				pRenderGeom->vertex_buffer_handle = Singleton<AgRenderResourceManager>::instance().m_vertex_buffer_pool.append(vb);
+				pRenderGeom->index_buffer_handle = Singleton<AgRenderResourceManager>::instance().m_index_buffer_pool.append(ib);
 				const FbxSurfaceMaterial * lMaterial = pMesh->GetNode()->GetMaterial(sub_mesh.m_material_index);
 				_ParseMaterial(pRenderGeom.get(), lMaterial);
 				AgGeometry::Handle geomHandle = Singleton<AgRenderResourceManager>::instance().m_geometries.append(pRenderGeom);

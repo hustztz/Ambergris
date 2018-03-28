@@ -36,11 +36,11 @@ namespace ambergris {
 		uint32_t size;
 		void* data = fileUtils::load(_name, &size);
 		if (NULL == data)
-			return AgResource::kInvalidHandle;
+			return AgTexture::kInvalidHandle;
 
 		bimg::ImageContainer* imageContainer = bimg::imageParse(entry::getAllocator(), data, size);
 		if (NULL == imageContainer)
-			return AgResource::kInvalidHandle;
+			return AgTexture::kInvalidHandle;
 
 		if ((NULL != bx::strFindI(_name, ".dds")) && (NULL != bx::strFindI(_name, ".ktx")))
 		{
@@ -96,13 +96,13 @@ namespace ambergris {
 			);
 		}
 		if(!bgfx::isValid(handle))
-			return AgResource::kInvalidHandle;
+			return AgTexture::kInvalidHandle;
 
 		bgfx::setName(handle, _name);
 
-		AgTexture* tex = AgResourcePool<AgTexture>::allocate<AgTexture>(entry::getAllocator());
+		std::shared_ptr<AgTexture> tex(BX_NEW(entry::getAllocator(), AgTexture));
 		if (!tex)
-			return AgResource::kInvalidHandle;
+			return AgTexture::kInvalidHandle;
 		tex->m_name = stl::string(_name);
 		bgfx::calcTextureSize(
 			tex->m_info
@@ -116,7 +116,7 @@ namespace ambergris {
 		);
 		tex->m_tex_handle = handle;
 
-		return tex->m_handle;
+		return AgResourcePool<AgTexture>::append(tex);
 	}
 
 	AgTexture::Handle AgTextureManager::append(uint16_t _width
@@ -143,11 +143,11 @@ namespace ambergris {
 
 		if (bgfx::isValid(handle))
 		{
-			AgTexture* tex = AgResourcePool<AgTexture>::allocate<AgTexture>(entry::getAllocator());
+			std::shared_ptr<AgTexture> tex(BX_NEW(entry::getAllocator(), AgTexture));
 			if (!tex)
 				return AgResource::kInvalidHandle;
 			tex->m_tex_handle = handle;
-			return tex->m_handle;
+			return AgResourcePool<AgTexture>::append(tex);
 		}
 		
 		return AgTexture::kInvalidHandle;

@@ -8,6 +8,8 @@ vec4 v_texcoord3 : TEXCOORD3 = vec4(0.0, 0.0, 0.0, 0.0);
 vec4 v_texcoord4 : TEXCOORD4 = vec4(0.0, 0.0, 0.0, 0.0);
 vec3 v_view      : TEXCOORD5 = vec3(0.0, 0.0, 0.0);
 vec4 v_shadowcoord : TEXCOORD6 = vec4(0.0, 0.0, 0.0, 0.0);
+vec4 v_position    : TEXCOORD7 = vec4(0.0, 0.0, 0.0, 0.0);
+float v_depth      : FOG       = 0.0;
 
 vec2 v_screenPos : TEXCOORD0 = vec2(0.0, 0.0);
 vec3 v_skyColor  : TEXCOORD1 = vec3(0.0, 0.0, 1.0);

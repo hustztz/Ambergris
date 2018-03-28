@@ -7,12 +7,12 @@ namespace ambergris {
 
 	struct AgResource
 	{
-		AgResource() : m_handle(kInvalidHandle), m_prepared(false) {}
+		AgResource() : m_handle(kInvalidHandle) {}
 
 		static const uint16_t kInvalidHandle = UINT16_MAX;
+		//typedef std::atomic<uint16_t> Handle;
 		typedef uint16_t Handle;
 		Handle m_handle;
-		std::atomic<bool>	m_prepared;
 	private:
 		AgResource(const AgResource&);
 		AgResource& operator=(const AgResource&);

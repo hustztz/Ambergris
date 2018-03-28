@@ -80,7 +80,7 @@ public:
 			if (!node)
 				continue;
 			const AgBoundingbox* bbox = Singleton<AgRenderResourceManager>::instance().m_bboxManager.get(node->m_bbox);
-			if (!bbox || !bbox->m_prepared)
+			if (!bbox || AgBoundingbox::kInvalidHandle == bbox->m_handle)
 				continue;
 			Aabb nodeAabb = bbox->m_aabb;
 			float tmpAabb[4];
@@ -159,7 +159,12 @@ public:
 		{
 			bgfx::dbgTextPrintf(0, 1, 0x0f, "Failed to initialize resource.");
 		}
-		AgLight* light = Singleton<AgRenderResourceManager>::instance().m_lights.allocate<AgSpotLight>(entry::getAllocator());
+
+		std::shared_ptr<AgLight> light(BX_NEW(entry::getAllocator(), AgSpotLight));
+		light->m_position.m_x = 20.0f;
+		light->m_position.m_y = 26.0f;
+		light->m_position.m_z = 20.0f;
+		Singleton<AgRenderResourceManager>::instance().m_lights.append(light);
 
 		Singleton<AgRenderer>::instance().clearNodes();
 		Singleton<AgRenderer>::instance().m_viewPass.m_width = m_width;

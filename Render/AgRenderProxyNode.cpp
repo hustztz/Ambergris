@@ -20,7 +20,7 @@ namespace ambergris {
 			return;
 
 		const AgShader* shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(pFxSystem->getOverrideShader());
-		if (!shader || !shader->m_prepared)
+		if (!shader || AgShader::kInvalidHandle == shader->m_handle)
 			return;
 		
 		if (!pFxSystem || pFxSystem->needTexture())

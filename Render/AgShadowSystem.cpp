@@ -123,13 +123,13 @@ namespace ambergris {
 			if (!black_shader)
 				return false;
 
-			if (!black_shader->m_prepared)
+			if (AgShader::kInvalidHandle == black_shader->m_handle)
 			{
 				black_shader->m_program = shaderUtils::loadProgram("vs_shadowmaps_color", "fs_shadowmaps_color_black");
 				if (!bgfx::isValid(black_shader->m_program))
 					return false;
 
-				black_shader->m_prepared = true;
+				black_shader->m_handle = AgShader::E_SHADOW_BLACK;
 			}
 		}
 		{
@@ -137,14 +137,14 @@ namespace ambergris {
 			if (!vBlur_shader)
 				return false;
 
-			if (!vBlur_shader->m_prepared)
+			if (AgShader::kInvalidHandle == vBlur_shader->m_handle)
 			{
 				vBlur_shader->m_program = shaderUtils::loadProgram("vs_shadowmaps_vblur", "fs_shadowmaps_vblur");
 				if (!bgfx::isValid(vBlur_shader->m_program))
 					return false;
 
 				vBlur_shader->m_uniforms[0].uniform_handle = bgfx::createUniform("u_smSamplingParams", bgfx::UniformType::Vec4);
-				vBlur_shader->m_prepared = true;
+				vBlur_shader->m_handle = AgShader::E_SHADOW_VBLUR;
 			}
 		}
 		{
@@ -152,14 +152,14 @@ namespace ambergris {
 			if (!hBlur_shader)
 				return false;
 
-			if (!hBlur_shader->m_prepared)
+			if (AgShader::kInvalidHandle == hBlur_shader->m_handle)
 			{
 				hBlur_shader->m_program = shaderUtils::loadProgram("vs_shadowmaps_hblur", "fs_shadowmaps_hblur");
 				if (!bgfx::isValid(hBlur_shader->m_program))
 					return false;
 
 				hBlur_shader->m_uniforms[0].uniform_handle = bgfx::createUniform("u_smSamplingParams", bgfx::UniformType::Vec4);
-				hBlur_shader->m_prepared = true;
+				hBlur_shader->m_handle = AgShader::E_SHADOW_HBLUR;
 			}
 		}
 		{
@@ -167,14 +167,14 @@ namespace ambergris {
 			if (!vBlur_vsm_shader)
 				return false;
 
-			if (!vBlur_vsm_shader->m_prepared)
+			if (AgShader::kInvalidHandle == vBlur_vsm_shader->m_handle)
 			{
 				vBlur_vsm_shader->m_program = shaderUtils::loadProgram("vs_shadowmaps_vblur", "fs_shadowmaps_vblur_vsm");
 				if (!bgfx::isValid(vBlur_vsm_shader->m_program))
 					return false;
 
 				vBlur_vsm_shader->m_uniforms[0].uniform_handle = bgfx::createUniform("u_smSamplingParams", bgfx::UniformType::Vec4);
-				vBlur_vsm_shader->m_prepared = true;
+				vBlur_vsm_shader->m_handle = AgShader::E_SHADOW_VBLUR_VSM;
 			}
 		}
 		{
@@ -182,14 +182,70 @@ namespace ambergris {
 			if (!hBlur_vsm_shader)
 				return false;
 
-			if (!hBlur_vsm_shader->m_prepared)
+			if (AgShader::kInvalidHandle == hBlur_vsm_shader->m_handle)
 			{
 				hBlur_vsm_shader->m_program = shaderUtils::loadProgram("vs_shadowmaps_hblur", "fs_shadowmaps_hblur_vsm");
 				if (!bgfx::isValid(hBlur_vsm_shader->m_program))
 					return false;
 
 				hBlur_vsm_shader->m_uniforms[0].uniform_handle = bgfx::createUniform("u_smSamplingParams", bgfx::UniformType::Vec4);
-				hBlur_vsm_shader->m_prepared = true;
+				hBlur_vsm_shader->m_handle = AgShader::E_SHADOW_HBLUR_VSM;
+			}
+		}
+		{
+			AgShader* packDepth_invz_shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(AgShader::E_SHADOW_PACKDEPTH_INVZ);
+			if (!packDepth_invz_shader)
+				return false;
+
+			if (AgShader::kInvalidHandle == packDepth_invz_shader->m_handle)
+			{
+				packDepth_invz_shader->m_program = shaderUtils::loadProgram("vs_shadowmaps_packdepth", "fs_shadowmaps_packdepth");
+				if (!bgfx::isValid(packDepth_invz_shader->m_program))
+					return false;
+
+				packDepth_invz_shader->m_handle = AgShader::E_SHADOW_PACKDEPTH_INVZ;
+			}
+		}
+		{
+			AgShader* packDepth_invz_vsm_shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(AgShader::E_SHADOW_PACKDEPTH_INVZ_VSM);
+			if (!packDepth_invz_vsm_shader)
+				return false;
+
+			if (AgShader::kInvalidHandle == packDepth_invz_vsm_shader->m_handle)
+			{
+				packDepth_invz_vsm_shader->m_program = shaderUtils::loadProgram("vs_shadowmaps_packdepth", "fs_shadowmaps_packdepth_vsm");
+				if (!bgfx::isValid(packDepth_invz_vsm_shader->m_program))
+					return false;
+
+				packDepth_invz_vsm_shader->m_handle = AgShader::E_SHADOW_PACKDEPTH_INVZ_VSM;
+			}
+		}
+		{
+			AgShader* packDepth_linear_shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(AgShader::E_SHADOW_PACKDEPTH_LINEAR);
+			if (!packDepth_linear_shader)
+				return false;
+
+			if (AgShader::kInvalidHandle == packDepth_linear_shader->m_handle)
+			{
+				packDepth_linear_shader->m_program = shaderUtils::loadProgram("vs_shadowmaps_packdepth_linear", "fs_shadowmaps_packdepth_linear");
+				if (!bgfx::isValid(packDepth_linear_shader->m_program))
+					return false;
+
+				packDepth_linear_shader->m_handle = AgShader::E_SHADOW_PACKDEPTH_LINEAR;
+			}
+		}
+		{
+			AgShader* packDepth_linear_vsm_shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(AgShader::E_SHADOW_PACKDEPTH_LINEAR_VSM);
+			if (!packDepth_linear_vsm_shader)
+				return false;
+
+			if (AgShader::kInvalidHandle == packDepth_linear_vsm_shader->m_handle)
+			{
+				packDepth_linear_vsm_shader->m_program = shaderUtils::loadProgram("vs_shadowmaps_packdepth_linear", "fs_shadowmaps_packdepth_vsm_linear");
+				if (!bgfx::isValid(packDepth_linear_vsm_shader->m_program))
+					return false;
+
+				packDepth_linear_vsm_shader->m_handle = AgShader::E_SHADOW_PACKDEPTH_LINEAR_VSM;
 			}
 		}
 		{
@@ -197,7 +253,7 @@ namespace ambergris {
 			if (!invz_hard_shader)
 				return false;
 
-			if (!invz_hard_shader->m_prepared)
+			if (AgShader::kInvalidHandle == invz_hard_shader->m_handle)
 			{
 				invz_hard_shader->m_program = shaderUtils::loadProgram("vs_shadowmaps_color_lighting", "fs_shadowmaps_color_lighting_hard");
 				if (!bgfx::isValid(invz_hard_shader->m_program))
@@ -240,7 +296,7 @@ namespace ambergris {
 				invz_hard_shader->m_texture_slots[0].uniform_handle = bgfx::createUniform("s_texColor", bgfx::UniformType::Int1);
 				invz_hard_shader->m_texture_slots[0].texture_state = AMBERGRIS_TEXTURE_STATE_FILTER;
 
-				invz_hard_shader->m_prepared = true;
+				invz_hard_shader->m_handle = AgShader::E_SHADOW_INVZ_HARD;
 			}
 
 			m_shadowMap[0] = bgfx::createUniform("s_shadowMap0", bgfx::UniformType::Int1);
@@ -390,6 +446,11 @@ namespace ambergris {
 		if (!shader || !item)
 			return;
 
+		if (ShadowRenderState::ShadowMap_PackDepth == m_renderStateIndex ||
+			ShadowRenderState::ShadowMap_PackDepthHoriz == m_renderStateIndex ||
+			ShadowRenderState::ShadowMap_PackDepthVert == m_renderStateIndex)
+			return;
+
 		if (m_light && typeid(AgDirectionalLight) == typeid(*m_light))
 		{
 			bx::mtxMul(m_lightMtx, item->m_mtx, m_mtxShadow); //not needed for directional light
@@ -438,6 +499,11 @@ namespace ambergris {
 					m_uniforms.m_YNum = 2.0f;
 					m_uniforms.m_XOffset = 1.0f;
 					m_uniforms.m_YOffset = 1.0f;
+
+					const AgShader* packDepthShader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(AgShader::E_SHADOW_PACKDEPTH_INVZ);
+					m_currentPackDepthShader = packDepthShader ? packDepthShader->m_handle : AgShader::kInvalidHandle;
+					const AgShader* lightingShader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(AgShader::E_SHADOW_INVZ_HARD);
+					m_currentLightingShader = lightingShader ? lightingShader->m_handle : AgShader::kInvalidHandle;
 				}
 				else
 				{

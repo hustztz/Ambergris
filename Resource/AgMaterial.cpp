@@ -22,8 +22,9 @@ namespace ambergris {
 		for (int id = 0; id < AgMaterial::E_COUNT; id++)
 		{
 			AgMaterial* mat = get(id);
-			if(!mat)
+			if(!mat || AgMaterial::kInvalidHandle != mat->m_handle)
 				continue;
+
 			switch (id)
 			{
 			case AgMaterial::E_LAMBERT:
@@ -42,6 +43,8 @@ namespace ambergris {
 			default:
 				break;
 			}
+
+			mat->m_handle = id;
 		}
 	}
 

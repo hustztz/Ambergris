@@ -244,7 +244,7 @@ namespace ambergris {
 			for (int j = 0; j < renderQueues.m_queues[AgRenderQueueManager::E_STATIC_SCENE_OPAQUE].getSize(); ++j)
 			{
 				const AgRenderNode* node = renderQueues.m_queues[AgRenderQueueManager::E_STATIC_SCENE_OPAQUE].get(j);
-				if (!node || !node->m_prepared)
+				if (!node || AgRenderNode::kInvalidHandle == node->m_handle)
 					continue;
 
 				shadowSystem->drawPackDepth(node);
@@ -261,7 +261,7 @@ namespace ambergris {
 				for (int j = 0; j < renderQueues.m_queues[i].getSize(); ++j)
 				{
 					const AgRenderNode* node = renderQueues.m_queues[i].get(j);
-					if (!node || !node->m_prepared)
+					if (!node || AgRenderNode::kInvalidHandle == node->m_handle)
 						continue;
 
 					node->draw(allViews, m_fxSystem, occlusionCulling);
@@ -286,7 +286,7 @@ namespace ambergris {
 		for (int i = 0; i < renderQueues.m_queues[AgRenderQueueManager::E_WIREFRAME].getSize(); ++i)
 		{
 			const AgRenderNode* node = renderQueues.m_queues[AgRenderQueueManager::E_WIREFRAME].get(i);
-			if (!node || !node->m_prepared)
+			if (!node || AgRenderNode::kInvalidHandle == node->m_handle)
 				continue;
 
 			node->draw(mainView, m_wireframeSystem, -2/*occlusionCulling*/);

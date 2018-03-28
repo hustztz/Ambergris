@@ -39,14 +39,13 @@ namespace ambergris {
 					return res->m_handle;
 			}
 
-			res->m_handle = (AgResource::Handle)getSize();
 			//std::lock_guard<std::mutex> lck(m_mutex);
+			res->m_handle = (AgResource::Handle)getSize();
 			m_resource_arr.push_back(res);
-			res->m_prepared = true;
 			return res->m_handle;
 		}
 
-		template<typename CT>
+		/*template<typename CT>
 		T* allocate(bx::AllocatorI* allocator) {
 			std::shared_ptr<T> res((T*)BX_NEW(allocator, CT));
 			if (!res)
@@ -64,7 +63,7 @@ namespace ambergris {
 			res->m_prepared = true;
 			return res.get();
 		}
-		/*template<>
+		template<>
 		T* allocate<T>(bx::AllocatorI* allocator) {
 			return allocate<T>(allocator);
 		}*/

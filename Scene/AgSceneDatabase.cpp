@@ -8,12 +8,9 @@ namespace ambergris {
 	/*virtual*/
 	AgObject::Handle AgSceneDatabase::appendObject(std::shared_ptr<AgObject> object)
 	{
-		if (!object)
-			return AgObject::kInvalidHandle;
-
-		AgBoundingbox* bbox = Singleton<AgRenderResourceManager>::instance().m_bboxManager.allocate<AgBoundingbox>(entry::getAllocator());
-		if (bbox)
-			object->m_bbox = bbox->m_handle;
+		AgObject::Handle handle = m_objectManager.append(object);
+		if (AgObject::kInvalidHandle == handle)
+			return handle;
 
 		std::shared_ptr<AgMesh> pMesh = std::dynamic_pointer_cast<AgMesh>(object);
 		if (pMesh)
@@ -42,6 +39,6 @@ namespace ambergris {
 			}
 		}
 
-		return m_objectManager.append(object);
+		return handle;
 	}
 }

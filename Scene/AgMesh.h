@@ -21,7 +21,7 @@ namespace ambergris {
 			m_pick_id[1] = mwc.gen() % 256;
 			m_pick_id[2] = mwc.gen() % 256;
 		};
-		void evaluateBoundingBox(AgBoundingbox* bbox);
+		void evaluateBoundingBox();
 
 		
 #ifdef USING_TINYSTL
@@ -33,5 +33,8 @@ namespace ambergris {
 		int				m_inst_handle;
 		uint32_t		m_pick_id[3];
 		bool			m_bShadowCaster;		// Initial shadow preference (overridden by renderables section of .unit)
+
+	protected:
+		void _EvaluateBoundingBox(AgBoundingbox* bbox);
 	};
 }

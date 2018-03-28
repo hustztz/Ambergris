@@ -261,7 +261,7 @@ namespace ambergris {
 			if (!landscape_shader)
 				return false;
 
-			if (!landscape_shader->m_prepared)
+			if (AgShader::kInvalidHandle == landscape_shader->m_handle)
 			{
 				landscape_shader->m_program = shaderUtils::loadProgram("vs_mesh", "fs_sky_landscape");
 				if (!bgfx::isValid(landscape_shader->m_program))
@@ -275,7 +275,7 @@ namespace ambergris {
 				landscape_shader->m_uniforms[2].uniform_handle = bgfx::createUniform("u_skyLuminance", bgfx::UniformType::Vec4);
 				landscape_shader->m_uniforms[3].uniform_handle = bgfx::createUniform("u_parameters", bgfx::UniformType::Vec4);
 
-				landscape_shader->m_prepared = true;
+				landscape_shader->m_handle = AgShader::E_SKY_LANDSCAPE_SHADER;
 			}
 		}
 		
@@ -284,7 +284,7 @@ namespace ambergris {
 			if (!landscape_instance_shader)
 				return false;
 
-			if (!landscape_instance_shader->m_prepared)
+			if (AgShader::kInvalidHandle == landscape_instance_shader->m_handle)
 			{
 				landscape_instance_shader->m_program = shaderUtils::loadProgram("vs_instancing", "fs_sky_landscape");
 				if (!bgfx::isValid(landscape_instance_shader->m_program))
@@ -298,7 +298,7 @@ namespace ambergris {
 				landscape_instance_shader->m_uniforms[2].uniform_handle = bgfx::createUniform("u_skyLuminance", bgfx::UniformType::Vec4);
 				landscape_instance_shader->m_uniforms[3].uniform_handle = bgfx::createUniform("u_parameters", bgfx::UniformType::Vec4);
 
-				landscape_instance_shader->m_prepared = true;
+				landscape_instance_shader->m_handle = AgShader::E_SKY_LANDSCAPE_INSTANCE_SHADER;
 			}
 		}
 		
@@ -307,7 +307,7 @@ namespace ambergris {
 			if (!sky_shader)
 				return false;
 
-			if (!sky_shader->m_prepared)
+			if (AgShader::kInvalidHandle == sky_shader->m_handle)
 			{
 				sky_shader->m_program = shaderUtils::loadProgram("vs_sky", "fs_sky");
 				if (!bgfx::isValid(sky_shader->m_program))
@@ -319,7 +319,7 @@ namespace ambergris {
 				sky_shader->m_uniforms[3].uniform_handle = bgfx::createUniform("u_perezCoeff", bgfx::UniformType::Vec4, 5);
 				sky_shader->m_uniforms[4].uniform_handle = bgfx::createUniform("u_sunLuminance", bgfx::UniformType::Vec4);
 
-				sky_shader->m_prepared = true;
+				sky_shader->m_handle = AgShader::E_SKY;
 			}
 		}
 		
@@ -328,7 +328,7 @@ namespace ambergris {
 			if (!color_sky_shader)
 				return false;
 
-			if (!color_sky_shader->m_prepared)
+			if (AgShader::kInvalidHandle == color_sky_shader->m_handle)
 			{
 				color_sky_shader->m_program = shaderUtils::loadProgram("vs_sky", "fs_sky_color_banding_fix");
 				if (!bgfx::isValid(color_sky_shader->m_program))
@@ -340,7 +340,7 @@ namespace ambergris {
 				color_sky_shader->m_uniforms[3].uniform_handle = bgfx::createUniform("u_perezCoeff", bgfx::UniformType::Vec4, 5);
 				color_sky_shader->m_uniforms[4].uniform_handle = bgfx::createUniform("u_sunLuminance", bgfx::UniformType::Vec4);
 
-				color_sky_shader->m_prepared = true;
+				color_sky_shader->m_handle = AgShader::E_SKY_COLOR_BANDING;
 			}
 		}
 		

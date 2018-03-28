@@ -13,7 +13,7 @@ namespace ambergris {
 		for (int i = 0; i < nNodeNum; i++)
 		{
 			AgObject* pObj = sceneDB.m_objectManager.get(i);
-			if(!pObj || !pObj->m_prepared || !pObj->m_dirty)
+			if(!pObj || AgObject::kInvalidHandle == pObj->m_handle || !pObj->m_dirty)
 				continue;
 
 			pObj->m_dirty = false;

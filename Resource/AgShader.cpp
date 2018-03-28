@@ -13,7 +13,7 @@ namespace ambergris {
 			if (!mesh_shader)
 				return false;
 
-			if (!mesh_shader->m_prepared)
+			if (AgShader::kInvalidHandle == mesh_shader->m_handle)
 			{
 				mesh_shader->m_program = shaderUtils::loadProgram("vs_mesh", "fs_lambert");
 				if (!bgfx::isValid(mesh_shader->m_program))
@@ -22,7 +22,7 @@ namespace ambergris {
 				mesh_shader->m_uniforms[0].uniform_handle = bgfx::createUniform("u_lightDir", bgfx::UniformType::Vec4);
 				mesh_shader->m_texture_slots[0].uniform_handle = bgfx::createUniform("s_texColor", bgfx::UniformType::Int1);
 				mesh_shader->m_texture_slots[0].texture_state = AMBERGRIS_TEXTURE_STATE_FILTER;
-				mesh_shader->m_prepared = true;
+				mesh_shader->m_handle = AgShader::E_MESH_SHADING;
 			}
 		}
 
@@ -31,12 +31,12 @@ namespace ambergris {
 			if (!simple_shader)
 				return false;
 
-			if (!simple_shader->m_prepared)
+			if (AgShader::kInvalidHandle == simple_shader->m_handle)
 			{
 				simple_shader->m_program = shaderUtils::loadProgram("vs_mesh", "fs_simple");
 				if (!bgfx::isValid(simple_shader->m_program))
 					return false;
-				simple_shader->m_prepared = true;
+				simple_shader->m_handle = AgShader::E_SIMPLE_SHADER;
 			}
 		}
 		
@@ -45,7 +45,7 @@ namespace ambergris {
 			if (!mesh_instance_shader)
 				return false;
 
-			if (!mesh_instance_shader->m_prepared)
+			if (AgShader::kInvalidHandle == mesh_instance_shader->m_handle)
 			{
 				mesh_instance_shader->m_program = shaderUtils::loadProgram("vs_instancing", "fs_lambert");
 				if (!bgfx::isValid(mesh_instance_shader->m_program))
@@ -54,7 +54,7 @@ namespace ambergris {
 				mesh_instance_shader->m_uniforms[0].uniform_handle = bgfx::createUniform("u_lightDir", bgfx::UniformType::Vec4);
 				mesh_instance_shader->m_texture_slots[0].uniform_handle = bgfx::createUniform("s_texColor", bgfx::UniformType::Int1);
 				mesh_instance_shader->m_texture_slots[0].texture_state = AMBERGRIS_TEXTURE_STATE_FILTER;
-				mesh_instance_shader->m_prepared = true;
+				mesh_instance_shader->m_handle = AgShader::E_MESH_INSTANCE_SHADER;
 			}
 		}
 
@@ -63,12 +63,12 @@ namespace ambergris {
 			if (!simple_shader)
 				return false;
 
-			if (!simple_shader->m_prepared)
+			if (AgShader::kInvalidHandle == simple_shader->m_handle)
 			{
 				simple_shader->m_program = shaderUtils::loadProgram("vs_instancing", "fs_simple");
 				if (!bgfx::isValid(simple_shader->m_program))
 					return false;
-				simple_shader->m_prepared = true;
+				simple_shader->m_handle = AgShader::E_SIMPLE_INSTANCE_SHADER;
 			}
 		}
 		return true;

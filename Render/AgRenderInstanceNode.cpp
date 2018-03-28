@@ -123,7 +123,7 @@ namespace ambergris {
 			return;
 
 		const AgShader* shader = Singleton<AgRenderResourceManager>::instance().m_shaders.get(pFxSystem->getOverrideShader() + AgShader::SHADER_INSTANCE_OFFSET);
-		if (!shader || !shader->m_prepared)
+		if (!shader || AgShader::kInvalidHandle == shader->m_handle)
 			return;
 
 		if (pFxSystem && typeid(*pFxSystem) == typeid(AgHardwarePickingSystem))
