@@ -3,8 +3,8 @@
 #include "Foundation/Singleton.h"
 #include "AgRenderPipeline.h"
 #include "AgRenderQueue.h"
-#include "AgRenderPass.h"
 #include "Resource/AgGeometry.h"
+#include "Resource/AgCameraView.h"
 
 namespace ambergris {
 
@@ -24,6 +24,7 @@ namespace ambergris {
 		};
 	public:
 		void destroy();
+		void clearViews();
 		void clearNodes();
 		void evaluateScene();
 		void runPipeline();
@@ -32,16 +33,17 @@ namespace ambergris {
 		const RenderHandle& getRenderHandle(AgGeometry::Handle geom) const;
 		const AgRenderNode* getRenderNode(AgGeometry::Handle geom) const;
 
-		void updatePickingView(float* invViewProj, float mouseXNDC, float mouseYNDC, float fov, float nearFrusm, float farFrusm);
+		void updatePickingInfo(float mouseXNDC, float mouseYNDC);
 		void enableOcclusionQuery(int32_t threshold);
 		void enableHardwarePicking(bool enable);
 		void enableSkySystem(bool enable) { m_pipeline.enableSkySystem(enable); }
 		void enableShadow(bool enable) { m_pipeline.enableShadow(enable); }
 		void updateTime(float time) { m_pipeline.updateTime(time); }
-		void updateLights(float* view, float projWidth, float projHeight);
 
 		bgfx::TextureHandle getDebugTexture() const { return m_pipeline.getDebugTexture(); }
 	protected:
+		void _UpdateView();
+		void _UpdateLights();
 		void _UpdatePickingNodes();
 	private:
 		AgRenderer();
@@ -49,12 +51,12 @@ namespace ambergris {
 		friend class Singleton<AgRenderer>;
 	public:
 		std::atomic<bool>	m_isEvaluating;
-		AgRenderPass		m_viewPass;
 		AgRenderQueueManager	m_renderQueueManager;
 	private:
 		typedef std::vector<RenderHandle> GeometryNodeMapping;
 		GeometryNodeMapping	m_geometryMapping;
 		AgRenderPipeline	m_pipeline;
+		AgCameraView::Handle m_activeView;
 
 		uint32_t		m_pick_reading;
 		uint32_t		m_currFrame;

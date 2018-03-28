@@ -7,6 +7,7 @@
 namespace ambergris {
 
 	AgCamera::AgCamera()
+		: m_camFovy(60.0f)
 	{
 		reset();
 	}
@@ -220,12 +221,12 @@ namespace ambergris {
 		m_eye.curr[2] = bx::lerp(m_eye.curr[2], m_eye.dest[2], amount);
 	}
 
-	void AgCamera::getViewMtx(float* _viewMtx)
+	void AgCamera::getViewMtx(float* _viewMtx) const
 	{
 		bx::mtxLookAt(_viewMtx, m_eye.curr, m_target.curr, m_up);
 	}
 
-	void AgCamera::getBackViewMtx(float* _viewMtx)
+	void AgCamera::getBackViewMtx(float* _viewMtx) const
 	{
 		float eye[3];
 		eye[0] = - m_eye.curr[0];

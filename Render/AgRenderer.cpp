@@ -3,6 +3,7 @@
 #include "Scene/AgSceneDatabase.h"
 #include "AgRenderProxyNode.h"
 #include "AgRenderItem.h"
+#include "Resource\AgRenderPass.h"
 #include "Resource\AgRenderResourceManager.h"
 
 #include "BGFX/entry/entry.h" //TODO
@@ -18,6 +19,7 @@ namespace ambergris {
 		, m_pick_reading(0)
 		, m_currFrame(UINT32_MAX)
 		, m_occlusion_threshold(0)
+		, m_activeView(AgCameraView::kInvalidHandle)
 	{
 		clearNodes();
 	}
@@ -32,27 +34,55 @@ namespace ambergris {
 		m_geometryMapping.clear();
 	}
 
+	void AgRenderer::clearViews()
+	{
+		for (uint16_t ii = 0; ii < Singleton<AgRenderResourceManager>::instance().m_views.getSize(); ii++)
+		{
+			const AgCameraView* view = Singleton<AgRenderResourceManager>::instance().m_views.get(ii);
+			if (!view)
+				break;
+
+			if (view->m_pass > AgRenderPass::RENDER_MAX_VIEW)
+				break;
+
+			if (AgCameraView::kInvalidHandle == view->m_handle)
+				continue;
+
+			bgfx::setViewClear(AgRenderPass::E_VIEW_MAIN + ii
+				, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH
+				, 0x303030ff
+				, 1.0f
+				, 0
+			);
+		}
+	}
+
 	void AgRenderer::destroy()
 	{
 		clearNodes();
 		m_pipeline.destroy();
 	}
 
-	void AgRenderer::updatePickingView(float* invViewProj, float mouseXNDC, float mouseYNDC, float fov, float nearFrusm, float farFrusm)
+	void AgRenderer::updatePickingInfo(float mouseXNDC, float mouseYNDC)
 	{
-		m_pipeline.updatePickingView(AgRenderPass::E_VIEW_ID, invViewProj, mouseXNDC, mouseYNDC, fov, nearFrusm, farFrusm);
+		const AgCameraView* view = Singleton<AgRenderResourceManager>::instance().m_views.get(m_activeView);
+		if (!view)
+			return;
+
+		float viewMtx[16];
+		view->getViewMtx(viewMtx);
+		float projMtx[16];
+		view->getProjMtx(projMtx);
+		float viewProj[16];
+		bx::mtxMul(viewProj, viewMtx, projMtx);
+		float invViewProj[16];
+		bx::mtxInverse(invViewProj, viewProj);
+		float pickFovy = 3.0f; //TODO
+		m_pipeline.updatePickingView(AgRenderPass::E_VIEW_ID, invViewProj, mouseXNDC, mouseYNDC, pickFovy, view->getNearClip(), view->getFarClip());
 	}
 
 	void AgRenderer::enableHardwarePicking(bool enable)
 	{
-		if (enable)
-		{
-			m_viewPass.init(AgRenderPass::E_VIEW_ID);
-		}
-		else
-		{
-			m_viewPass.m_pass_state[AgRenderPass::E_VIEW_ID].isValid = false;
-		}
 		m_pipeline.enableHardwarePicking(enable);
 	}
 
@@ -144,6 +174,9 @@ namespace ambergris {
 
 	void AgRenderer::runPipeline()
 	{
+		_UpdateView();
+		_UpdateLights();
+		//Picking pass
 		if (m_pick_reading == m_currFrame)
 		{
 			m_pick_reading = 0;
@@ -156,28 +189,25 @@ namespace ambergris {
 			m_pick_reading = m_pipeline.readPickingBlit(AgRenderPass::E_VIEW_BLIT);
 		}
 
-		m_viewPass.clear();
-
 		ViewIdArray mainView;
 		ViewIdArray allViews;
-		ViewIdArray occlusionViews;
-		for (uint16_t i = 0; i < AgRenderPass::E_VIEW_COUNT; i++)
+		for (uint16_t ii = 0; ii < Singleton<AgRenderResourceManager>::instance().m_views.getSize(); ii++)
 		{
-			if (!m_viewPass.m_pass_state[i].isValid)
+			const AgCameraView* view = Singleton<AgRenderResourceManager>::instance().m_views.get(ii);
+			if (!view)
+				break;
+
+			if (view->m_pass > AgRenderPass::RENDER_MAX_VIEW)
+				break;
+
+			if (AgCameraView::kInvalidHandle == view->m_handle)
 				continue;
 
-			switch (i)
+			if (view->m_handle == m_activeView)
 			{
-			case AgRenderPass::E_VIEW_MAIN:
-				mainView.push_back(i);
-				allViews.push_back(i);
-				break;
-			case AgRenderPass::E_VIEW_SECOND:
-				allViews.push_back(i);
-				break;
-			default:
-				break;
+				mainView.push_back(AgRenderPass::E_VIEW_MAIN + ii);
 			}
+			allViews.push_back(AgRenderPass::E_VIEW_MAIN + ii);
 		}
 		int32_t occlusionCulling = -2;
 		if (m_occlusion_threshold > 0)
@@ -237,14 +267,64 @@ namespace ambergris {
 		}
 	}
 
-	void AgRenderer::updateLights(float* view, float projWidth, float projHeight)
+	void AgRenderer::_UpdateView()
 	{
+		for (uint16_t ii = 0; ii < Singleton<AgRenderResourceManager>::instance().m_views.getSize(); ii++)
+		{
+			const AgCameraView* view = Singleton<AgRenderResourceManager>::instance().m_views.get(ii);
+			if (!view)
+				break;
+
+			if(view->m_pass > AgRenderPass::RENDER_MAX_VIEW)
+				break;
+
+			if (view->m_pass == AgRenderPass::E_VIEW_MAIN)
+				m_activeView = view->m_handle;
+
+			if (AgCameraView::kInvalidHandle == view->m_handle)
+				continue;
+
+			float viewMtx[16];
+			view->getViewMtx(viewMtx);
+			float projMtx[16];
+			view->getProjMtx(projMtx);
+			bgfx::setViewTransform(AgRenderPass::E_VIEW_MAIN + ii, viewMtx, projMtx);
+
+			if (view->m_handle == m_activeView)
+			{
+				// Set view 0 default viewport.
+				bgfx::setViewRect(AgRenderPass::E_VIEW_MAIN + ii, 0, 0, bgfx::BackbufferRatio::Equal);
+			}
+			else
+			{
+				bgfx::setViewRect(AgRenderPass::E_VIEW_MAIN + ii, uint16_t(view->m_x), uint16_t(view->m_y), uint16_t(view->m_width), uint16_t(view->m_height));
+			}
+			// This dummy draw call is here to make sure that view 0 is cleared
+			// if no other draw calls are submitted to view 0.
+			bgfx::touch(AgRenderPass::E_VIEW_MAIN + ii);
+		}
+	}
+
+	void AgRenderer::_UpdateLights()
+	{
+		const AgCameraView* view = Singleton<AgRenderResourceManager>::instance().m_views.get(m_activeView);
+		if (!view)
+			return;
+
+		float viewMtx[16];
+		view->getViewMtx(viewMtx);
+		const float camAspect = float(view->m_width) / float(view->m_height);
+		const float lightFovy = view->m_camera.getFovy();//TODO
+
+		const float projHeight = 1.0f / bx::tan(bx::toRad(lightFovy)*0.5f);
+		const float projWidth = projHeight * camAspect;
+
 		for (int ii = 0; ii < Singleton<AgRenderResourceManager>::instance().m_lights.getSize(); ii++)
 		{
 			AgLight* light = Singleton<AgRenderResourceManager>::instance().m_lights.get(ii);
 			if(!light)
 				continue;
-			light->computeViewSpaceComponents(view, projWidth, projHeight);
+			light->computeViewSpaceComponents(viewMtx, projWidth, projHeight);
 		}
 	}
 }

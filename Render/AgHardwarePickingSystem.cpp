@@ -73,6 +73,14 @@ namespace ambergris {
 			return false;
 		}
 
+		// ID buffer clears to black, which represnts clicking on nothing (background)
+		bgfx::setViewClear(AgRenderPass::E_VIEW_ID
+			, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH
+			, 0x000000ff
+			, 1.0f
+			, 0
+		);
+
 		// Set up ID buffer, which has a color target and depth buffer
 		m_pickingRT = bgfx::createTexture2D(ID_DIM, ID_DIM, false, 1, bgfx::TextureFormat::RGBA8, 0
 			| BGFX_TEXTURE_RT

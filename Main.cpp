@@ -8,16 +8,12 @@
 #include "Resource/AgRenderResourceManager.h"
 #include "FBX/FbxImportManager.h"
 #include "Scene/AgSceneDatabase.h"
-#include "Scene/AgCamera.h"
 #include "Resource/AgSpotLight.h"
 
 #include <algorithm>
 #include <thread>
 
 using namespace ambergris;
-
-#define FAR_VIEW_CLIP 10000.0f
-#define NEAR_VIEW_CLIP 0.1f
 
 namespace
 {
@@ -61,8 +57,11 @@ public:
 		return true;
 	}
 
-	void focusView()
+	void focusView(AgCamera* camera)
 	{
+		if (!camera)
+			return;
+
 		const AgSceneDatabase& sceneDB = Singleton<AgSceneDatabase>::instance();
 
 		bool touched = false;
@@ -117,8 +116,8 @@ public:
 		float target[3] = { (sceneAabb.m_max[0] + sceneAabb.m_min[0]) * 0.5f, (sceneAabb.m_max[1] + sceneAabb.m_min[1]) * 0.5f, (sceneAabb.m_max[2] + sceneAabb.m_min[2]) * 0.5f };
 		float eye[3] = { scale, 0.0f, 0.0f };
 
-		m_camera.setTarget(target);
-		m_camera.setPosition(eye);
+		camera->setTarget(target);
+		camera->setPosition(eye);
 		//cameraSetVerticalAngle(-bx::kPi / 4.0f);
 	}
 
@@ -160,6 +159,20 @@ public:
 			bgfx::dbgTextPrintf(0, 1, 0x0f, "Failed to initialize resource.");
 		}
 
+		AgCameraView* view0 = Singleton<AgRenderResourceManager>::instance().m_views.get(0);
+		view0->m_width = m_width;
+		view0->m_height = m_height;
+		view0->m_pass = AgRenderPass::E_VIEW_MAIN;
+		m_camera = &(view0->m_camera);
+		view0->m_handle = 0;
+		AgCameraView* view1 = Singleton<AgRenderResourceManager>::instance().m_views.get(1);
+		view1->m_x = 10;
+		view1->m_y = m_height - m_height / 4 - 10;
+		view1->m_width = m_width / 4;
+		view1->m_height = m_height / 4;
+		view1->m_pass = AgRenderPass::E_VIEW_SECOND;
+		//view1->m_handle = 1;
+
 		std::shared_ptr<AgLight> light(BX_NEW(entry::getAllocator(), AgSpotLight));
 		light->m_position.m_x = 20.0f;
 		light->m_position.m_y = 26.0f;
@@ -167,9 +180,7 @@ public:
 		Singleton<AgRenderResourceManager>::instance().m_lights.append(light);
 
 		Singleton<AgRenderer>::instance().clearNodes();
-		Singleton<AgRenderer>::instance().m_viewPass.m_width = m_width;
-		Singleton<AgRenderer>::instance().m_viewPass.m_height = m_height;
-		Singleton<AgRenderer>::instance().m_viewPass.init(AgRenderPass::E_VIEW_MAIN);
+		Singleton<AgRenderer>::instance().clearViews();
 		//TODO:
 		bgfx::setViewMode(AgRenderPass::E_VIEW_MAIN, bgfx::ViewMode::Sequential);
 
@@ -232,7 +243,7 @@ public:
 
 			if (ImGui::Button("Focus"))
 			{
-				focusView();
+				focusView(m_camera);
 			}
 
 			if (ImGui::Button("Clear"))
@@ -269,11 +280,15 @@ public:
 			ImGui::Checkbox("Aux Viewer", &m_secondViewer);
 			if (m_secondViewer)
 			{
-				Singleton<AgRenderer>::instance().m_viewPass.init(AgRenderPass::E_VIEW_SECOND);
+				AgCameraView* view1 = Singleton<AgRenderResourceManager>::instance().m_views.get(1);
+				if (view1)
+					view1->m_handle = 1;
 			}
 			else
 			{
-				Singleton<AgRenderer>::instance().m_viewPass.m_pass_state[AgRenderPass::E_VIEW_SECOND].isValid = false;
+				AgCameraView* view1 = Singleton<AgRenderResourceManager>::instance().m_views.get(1);
+				if (view1)
+					view1->m_handle = AgCameraView::kInvalidHandle;
 			}
 
 			ImGui::End();
@@ -302,58 +317,44 @@ public:
 				//// might be much larger than window size.
 				//bgfx::setViewRect(0, 0, 0, hmd->width, hmd->height);
 			}
-			else
+			else if(m_camera)
 			{
 				if (!ImGui::MouseOverArea())
 				{
 					m_mouse.update(float(m_mouseState.m_mx), float(m_mouseState.m_my), m_mouseState.m_mz, m_width, m_height);
 					if (m_mouseState.m_buttons[entry::MouseButton::Left])
 					{
-						m_camera.orbit(m_mouse.m_dx, m_mouse.m_dy);
+						m_camera->orbit(m_mouse.m_dx, m_mouse.m_dy);
 					}
 					else if (m_mouseState.m_buttons[entry::MouseButton::Right])
 					{
-						m_camera.dolly(m_mouse.m_dx + m_mouse.m_dy);
+						m_camera->dolly(m_mouse.m_dx + m_mouse.m_dy);
 					}
 					else if (0 != m_mouse.m_scroll)
 					{
-						m_camera.dolly(float(m_mouse.m_scroll)*0.1f);
+						m_camera->dolly(float(m_mouse.m_scroll)*0.1f);
 					}
 				}
+				m_camera->update(deltaTime);
 
-				m_camera.update(deltaTime);
-				float view[16];
-				m_camera.getViewMtx(view);
-
-				const float camFovy = 60.0f;
-				const float camAspect = float(m_width) / float(m_height);
-				float proj[16];
-				bx::mtxProj(proj, camFovy, camAspect, NEAR_VIEW_CLIP, FAR_VIEW_CLIP, true);// bgfx::getCaps()->homogeneousDepth);
-				bgfx::setViewTransform(AgRenderPass::E_VIEW_MAIN, view, proj);
-
-				float backView[16];
-				m_camera.getBackViewMtx(backView);
-				bgfx::setViewTransform(AgRenderPass::E_VIEW_SECOND, backView, proj);
+				{
+					AgCameraView* view1 = Singleton<AgRenderResourceManager>::instance().m_views.get(1);
+					if (view1 && AgCameraView::kInvalidHandle != view1->m_handle)
+					{
+						view1->m_camera = *m_camera;
+						view1->m_camera.reverseView();
+					}
+				}
 
 				if (m_mouseState.m_click)
 				{
 					m_mouseState.m_click = false;
-					// Set up picking pass
-					float viewProj[16];
-					bx::mtxMul(viewProj, view, proj);
-
-					float invViewProj[16];
-					bx::mtxInverse(invViewProj, viewProj);
-
 					// Mouse coord in NDC
 					float mouseXNDC = (m_mouseState.m_mx / (float)m_width) * 2.0f - 1.0f;
 					float mouseYNDC = ((m_height - m_mouseState.m_my) / (float)m_height) * 2.0f - 1.0f;
 
-					Singleton<AgRenderer>::instance().updatePickingView(invViewProj, mouseXNDC, mouseYNDC, 3.0f, NEAR_VIEW_CLIP, FAR_VIEW_CLIP);
+					Singleton<AgRenderer>::instance().updatePickingInfo(mouseXNDC, mouseYNDC);
 				}
-				const float projHeight = 1.0f / bx::tan(bx::toRad(camFovy)*0.5f);
-				const float projWidth = projHeight * camAspect;
-				Singleton<AgRenderer>::instance().updateLights(view, projWidth, projHeight);
 			}
 
 			Singleton<AgRenderer>::instance().updateTime(m_time);
@@ -404,8 +405,8 @@ public:
 	};
 	Mouse				m_mouse;
 	entry::MouseState	m_mouseState;
-	AgCamera			m_camera;
 
+	AgCamera* m_camera;
 	uint32_t m_width;
 	uint32_t m_height;
 	uint32_t m_debug;

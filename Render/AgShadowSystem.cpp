@@ -1,7 +1,7 @@
 #include "AgShadowSystem.h"
 #include "AgRenderNode.h"
-#include "AgRenderPass.h"
 #include "AgRenderItem.h"
+#include "Resource/AgRenderPass.h"
 #include "Resource/AgDirectionalLight.h"
 #include "Resource/AgPointLight.h"
 #include "Resource/AgSpotLight.h"

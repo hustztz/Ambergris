@@ -23,8 +23,10 @@ namespace ambergris {
 		void consumeOrbit(float _amount);
 		void update(float _dt);
 
-		void getViewMtx(float* _viewMtx);
-		void getBackViewMtx(float* _viewMtx);
+		void reverseView() { m_eye.curr[0] = -m_eye.curr[0]; }
+
+		void getViewMtx(float* _viewMtx) const;
+		void getBackViewMtx(float* _viewMtx) const;
 		void setPosition(const float* _pos);
 		void getPosition(float* _pos) const;
 		void setTarget(const float* _at);
@@ -33,6 +35,8 @@ namespace ambergris {
 		void updateVerticalAngle(float _delta) { m_verticalAngle += _delta; }
 		void setHorizontalAngle(float _horizontalAngle);
 		void updateHorizontalAngle(float _delta) { m_horizontalAngle += _delta; }
+
+		float getFovy() const { return m_camFovy; }
 	protected:
 		struct Interp3f
 		{
@@ -45,5 +49,6 @@ namespace ambergris {
 		float m_orbit[2];
 		float m_horizontalAngle;
 		float m_verticalAngle;
+		float m_camFovy;
 	};
 }

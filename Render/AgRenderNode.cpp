@@ -1,8 +1,8 @@
 #include "AgRenderNode.h"
 #include "AgRenderItem.h"
-#include "Resource/AgRenderResourceManager.h"
-#include "AgRenderPass.h"
 #include "AgFxSystem.h"
+#include "Resource/AgRenderResourceManager.h"
+#include "Resource/AgRenderPass.h"
 
 #include <assert.h>
 

@@ -4,7 +4,7 @@
  */
 
 #include <bx/timer.h>
-#include "Scene/AgCamera.h"
+#include "Resource/AgCamera.h"
 #include "camera.h"
 #include "entry/entry.h"
 #include "entry/cmd.h"
@@ -208,7 +208,7 @@ struct Camera
 		}
 	}
 
-	void getViewMtx(float* _viewMtx)
+	void getViewMtx(float* _viewMtx) const
 	{
 		m_camera.getViewMtx(_viewMtx);
 	}
