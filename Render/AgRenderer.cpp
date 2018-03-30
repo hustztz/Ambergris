@@ -42,7 +42,7 @@ namespace ambergris {
 			if (!view)
 				break;
 
-			if (view->m_pass > AgRenderPass::RENDER_MAX_VIEW)
+			if (!view->isRenderView())
 				break;
 
 			if (AgCameraView::kInvalidHandle == view->m_handle)
@@ -69,12 +69,8 @@ namespace ambergris {
 		if (!view)
 			return;
 
-		float viewMtx[16];
-		view->getViewMtx(viewMtx);
-		float projMtx[16];
-		view->getProjMtx(projMtx);
 		float viewProj[16];
-		bx::mtxMul(viewProj, viewMtx, projMtx);
+		bx::mtxMul(viewProj, view->getViewMtx(), view->getProjMtx());
 		float invViewProj[16];
 		bx::mtxInverse(invViewProj, viewProj);
 		float pickFovy = 3.0f; //TODO
@@ -176,6 +172,7 @@ namespace ambergris {
 	{
 		_UpdateView();
 		_UpdateLights();
+
 		//Picking pass
 		if (m_pick_reading == m_currFrame)
 		{
@@ -197,7 +194,7 @@ namespace ambergris {
 			if (!view)
 				break;
 
-			if (view->m_pass > AgRenderPass::RENDER_MAX_VIEW)
+			if (!view->isRenderView())
 				break;
 
 			if (AgCameraView::kInvalidHandle == view->m_handle)
@@ -253,11 +250,11 @@ namespace ambergris {
 						std::shared_ptr<AgRenderProxyNode> wireframeNode(BX_NEW(entry::getAllocator(), AgRenderProxyNode));
 						if (wireframeNode)
 						{
-							const float* overrideTransform = node->getTransform(renderHandle.item);
-							if (overrideTransform)
+							AgCacheTransform::Handle overrideTransform = node->getTransform(renderHandle.item);
+							if (AgCacheTransform::kInvalidHandle != overrideTransform)
 								wireframeNode->setTransform(overrideTransform);
 							else
-								wireframeNode->setTransform(pItem->m_mtx);
+								wireframeNode->setTransform(pItem->m_transform);
 							wireframeNode->appendItem(pItem);
 							m_renderQueueManager.m_queues[AgRenderQueueManager::E_WIREFRAME].append(wireframeNode);
 						}
@@ -275,20 +272,16 @@ namespace ambergris {
 			if (!view)
 				break;
 
-			if(view->m_pass > AgRenderPass::RENDER_MAX_VIEW)
+			if(!view->isRenderView())
 				break;
 
-			if (view->m_pass == AgRenderPass::E_VIEW_MAIN)
+			if (view->isMainView())
 				m_activeView = view->m_handle;
 
 			if (AgCameraView::kInvalidHandle == view->m_handle)
 				continue;
 
-			float viewMtx[16];
-			view->getViewMtx(viewMtx);
-			float projMtx[16];
-			view->getProjMtx(projMtx);
-			bgfx::setViewTransform(AgRenderPass::E_VIEW_MAIN + ii, viewMtx, projMtx);
+			bgfx::setViewTransform(AgRenderPass::E_VIEW_MAIN + ii, view->getViewMtx(), view->getProjMtx());
 
 			if (view->m_handle == m_activeView)
 			{
@@ -297,7 +290,7 @@ namespace ambergris {
 			}
 			else
 			{
-				bgfx::setViewRect(AgRenderPass::E_VIEW_MAIN + ii, uint16_t(view->m_x), uint16_t(view->m_y), uint16_t(view->m_width), uint16_t(view->m_height));
+				bgfx::setViewRect(AgRenderPass::E_VIEW_MAIN + ii, uint16_t(view->getOffsetX()), uint16_t(view->getOffsetY()), uint16_t(view->getWidth()), uint16_t(view->getHeight()));
 			}
 			// This dummy draw call is here to make sure that view 0 is cleared
 			// if no other draw calls are submitted to view 0.
@@ -311,10 +304,8 @@ namespace ambergris {
 		if (!view)
 			return;
 
-		float viewMtx[16];
-		view->getViewMtx(viewMtx);
-		const float camAspect = float(view->m_width) / float(view->m_height);
-		const float lightFovy = view->m_camera.getFovy();//TODO
+		const float camAspect = float(view->getWidth() - view->getOffsetX()) / float(view->getHeight() - view->getOffsetY());
+		const float lightFovy = view->getCameraFovy();//TODO
 
 		const float projHeight = 1.0f / bx::tan(bx::toRad(lightFovy)*0.5f);
 		const float projWidth = projHeight * camAspect;
@@ -324,7 +315,7 @@ namespace ambergris {
 			AgLight* light = Singleton<AgRenderResourceManager>::instance().m_lights.get(ii);
 			if(!light)
 				continue;
-			light->computeViewSpaceComponents(viewMtx, projWidth, projHeight);
+			light->computeViewSpaceComponents(view->getViewMtx(), projWidth, projHeight);
 		}
 	}
 }

@@ -1,4 +1,5 @@
 #include "AgVoxelContainer.h"
+#include "AgVoxelTreeRunTime.h"
 
 #include <common/RCMemoryMapFile.h>
 
@@ -10,7 +11,7 @@ namespace ambergris {
 
 	AgVoxelContainer::AgVoxelContainer(AgVoxelTreeRunTime* parentTreePtr) :
 		m_hasOccluder(false),
-		m_parentTreePtr(parentTreePtr),
+		m_parentTreeHandle(AgVoxelTreeRunTime::kInvalidHandle),
 		m_currentLODLoaded(-1),
 		m_currentDrawLOD(0),
 		m_maximumLOD(0),
@@ -32,14 +33,14 @@ namespace ambergris {
 		m_regionFlag(0),
 		mHasPersistentDeletedPts(false)
 	{
-		setRegionIndex(alPointSelect::UNASSIGNED);
+		//setRegionIndex(alPointSelect::UNASSIGNED);
 		setIsInTempSelection(false);
 
 		memset(&m_amountOfLODPoints[0], 0, sizeof(int) * 32);
 		memset(&m_amountOfOctreeNodes[0], 0, sizeof(int) * 32);
 	}
 
-	void AgVoxelContainer::loadTerrestialLODInternal(int newLOD, RCMemoryMapFile* memMapFile, bool lock)
+	/*void AgVoxelContainer::loadTerrestialLODInternal(int newLOD, RCMemoryMapFile* memMapFile, bool lock)
 	{
 		int amountOfPoints = m_amountOfLODPoints[newLOD];
 		if (amountOfPoints <= 0)
@@ -694,7 +695,7 @@ namespace ambergris {
 					updateClipEffectWhenRefinePoints(oldPoints);
 			}
 		}
-	}
+	}*/
 
 	void AgVoxelContainer::getLODInternalLoadInfo(int newLOD, std::uint64_t& fileOffset, int& bytesToRead) const
 	{
@@ -717,7 +718,7 @@ namespace ambergris {
 		bytesToRead = sizeof(AgVoxelLeafNode) * pointsToBeStreamedIn;
 	}
 
-	void AgVoxelContainer::loadLODInternalFromRawData(int newLOD, void* data, int numBytes)
+	/*void AgVoxelContainer::loadLODInternalFromRawData(int newLOD, void* data, int numBytes)
 	{
 		AgVoxelLeafNode* rawPoints = static_cast<AgVoxelLeafNode*>(data);
 
@@ -727,7 +728,7 @@ namespace ambergris {
 
 		if (numBytes != pointsToBeStreamedIn * int(sizeof(AgVoxelLeafNode)))
 		{
-			rcassert(false, "Mismatched raw data size");
+			assert(false, "Mismatched raw data size");
 			return;
 		}
 
@@ -815,79 +816,79 @@ namespace ambergris {
 			updateLayerEffectWhenRefinePoints(oldPoints);
 			updateClipEffectWhenRefinePoints(oldPoints);
 		}
-	}
+	}*/
 
-	void AgVoxelContainer::loadLidarLODInternalNoSelection(int lodLevel, RCMemoryMapFile* memMapFile  /*= NULL */)
-	{
-		int amountOfPoints = m_amountOfLODPoints[lodLevel];
+	//void AgVoxelContainer::loadLidarLODInternalNoSelection(int lodLevel, RCMemoryMapFile* memMapFile  /*= NULL */)
+	//{
+	//	int amountOfPoints = m_amountOfLODPoints[lodLevel];
 
-		std::vector<AgVoxelLeafNode>   rawPoints(amountOfPoints);
-		m_lidarPointList.resize(amountOfPoints);
+	//	std::vector<AgVoxelLeafNode>   rawPoints(amountOfPoints);
+	//	m_lidarPointList.resize(amountOfPoints);
 
-		if (!memMapFile)
-		{
-			RCMemoryMapFile memmap(m_parentTreePtr->getFileName().c_str());
-			if (memmap.createFileHandleOnlyRead())
-			{
-				memMapFile = &memmap;
-				memMapFile->setFilePointer(m_pointDataOffsetStart);
-				memMapFile->readFile(&rawPoints[0], sizeof(AgVoxelLeafNode) * amountOfPoints);
-			}
-		}
-		else
-		{
-			memMapFile->setFilePointer(m_pointDataOffsetStart);
-			memMapFile->readFile(&rawPoints[0], sizeof(AgVoxelLeafNode) * amountOfPoints);
-		}
+	//	if (!memMapFile)
+	//	{
+	//		RCMemoryMapFile memmap(m_parentTreePtr->getFileName().c_str());
+	//		if (memmap.createFileHandleOnlyRead())
+	//		{
+	//			memMapFile = &memmap;
+	//			memMapFile->setFilePointer(m_pointDataOffsetStart);
+	//			memMapFile->readFile(&rawPoints[0], sizeof(AgVoxelLeafNode) * amountOfPoints);
+	//		}
+	//	}
+	//	else
+	//	{
+	//		memMapFile->setFilePointer(m_pointDataOffsetStart);
+	//		memMapFile->readFile(&rawPoints[0], sizeof(AgVoxelLeafNode) * amountOfPoints);
+	//	}
 
-		//convert to internal format
-		for (int i = 0; i < amountOfPoints; i++)
-		{
-			auto& rawPoint = rawPoints[i];
-			m_lidarPointList[i].setRawCoord(rawPoint.getRawOffsetFromBoundingBox());
-			m_lidarPointList[i].setRGBA(rawPoint.getRGBA());
-			m_lidarPointList[i].setNormalIndex(rawPoint.getNormal());
-			m_lidarPointList[i].setLidarClassification(rawPoint.getLidarClassification());
-		}
+	//	//convert to internal format
+	//	for (int i = 0; i < amountOfPoints; i++)
+	//	{
+	//		auto& rawPoint = rawPoints[i];
+	//		m_lidarPointList[i].setRawCoord(rawPoint.getRawOffsetFromBoundingBox());
+	//		m_lidarPointList[i].setRGBA(rawPoint.getRGBA());
+	//		m_lidarPointList[i].setNormalIndex(rawPoint.getNormal());
+	//		m_lidarPointList[i].setLidarClassification(rawPoint.getLidarClassification());
+	//	}
 
-		m_currentLODLoaded = lodLevel;
-	}
+	//	m_currentLODLoaded = lodLevel;
+	//}
 
-	void AgVoxelContainer::loadTerrestialLODInternalNoSelection(int newLOD, RCMemoryMapFile* memMapFile /*= NULL */)
-	{
+	//void AgVoxelContainer::loadTerrestialLODInternalNoSelection(int newLOD, RCMemoryMapFile* memMapFile /*= NULL */)
+	//{
 
-		int amountOfPoints = m_amountOfLODPoints[newLOD];
+	//	int amountOfPoints = m_amountOfLODPoints[newLOD];
 
-		std::vector<AgVoxelLeafNode> rawPoints(amountOfPoints);
-		m_terrestialPointList.resize(amountOfPoints);
+	//	std::vector<AgVoxelLeafNode> rawPoints(amountOfPoints);
+	//	m_terrestialPointList.resize(amountOfPoints);
 
-		if (!memMapFile)
-		{
-			RCMemoryMapFile memmap(m_parentTreePtr->getFileName().c_str());
-			if (memmap.createFileHandleOnlyRead())
-			{
-				memmap.setFilePointer(m_pointDataOffsetStart);
-				memmap.readFile(&rawPoints[0], sizeof(AgVoxelLeafNode) * amountOfPoints);
-			}
-		}
-		else
-		{
-			memMapFile->setFilePointer(m_pointDataOffsetStart);
-			memMapFile->readFile(&rawPoints[0], sizeof(VoxelLeafNode) * amountOfPoints);
-		}
+	//	if (!memMapFile)
+	//	{
+	//		RCMemoryMapFile memmap(m_parentTreePtr->getFileName().c_str());
+	//		if (memmap.createFileHandleOnlyRead())
+	//		{
+	//			memmap.setFilePointer(m_pointDataOffsetStart);
+	//			memmap.readFile(&rawPoints[0], sizeof(AgVoxelLeafNode) * amountOfPoints);
+	//		}
+	//	}
+	//	else
+	//	{
+	//		memMapFile->setFilePointer(m_pointDataOffsetStart);
+	//		memMapFile->readFile(&rawPoints[0], sizeof(VoxelLeafNode) * amountOfPoints);
+	//	}
 
-		//convert to internal format
-		for (int i = 0; i < amountOfPoints; i++)
-		{
-			auto& rawPoint = rawPoints[i];
-			m_terrestialPointList[i].setRawCoord(rawPoint.getRawOffsetFromBoundingBox());
-			m_terrestialPointList[i].setRGBA(rawPoint.getRGBA());
-			m_terrestialPointList[i].setNormalIndex(rawPoint.getNormal());
-		}
-		m_currentLODLoaded = newLOD;
-	}
+	//	//convert to internal format
+	//	for (int i = 0; i < amountOfPoints; i++)
+	//	{
+	//		auto& rawPoint = rawPoints[i];
+	//		m_terrestialPointList[i].setRawCoord(rawPoint.getRawOffsetFromBoundingBox());
+	//		m_terrestialPointList[i].setRGBA(rawPoint.getRGBA());
+	//		m_terrestialPointList[i].setNormalIndex(rawPoint.getNormal());
+	//	}
+	//	m_currentLODLoaded = newLOD;
+	//}
 
-	std::vector<AgVoxelLeafNode>
+	/*std::vector<AgVoxelLeafNode>
 		AgVoxelContainer::loadLODPointToPointList(int newLOD, RCMemoryMapFile* memMapFile) const
 	{
 		int pointsToBeStreamedIn = m_amountOfLODPoints[newLOD];
@@ -920,7 +921,7 @@ namespace ambergris {
 				rcassert(false, " AgVoxelContainer::loadLODPointToPointList: Invalid File Reading!\n");
 			}
 
-			bool success = memMapFile->readFile(&rawPoints[0], sizeof(VoxelLeafNode) * pointsToBeStreamedIn);
+			bool success = memMapFile->readFile(&rawPoints[0], sizeof(AgVoxelLeafNode) * pointsToBeStreamedIn);
 			if (success == true)
 			{
 
@@ -938,9 +939,9 @@ namespace ambergris {
 		}
 
 		return rawPoints;
-	}
+	}*/
 
-	void AgVoxelContainer::loadRawPoints(int pointNumber, RCMemoryMapFile* memMapFile, std::vector<AgVoxelLeafNode>& out) const
+	/*void AgVoxelContainer::loadRawPoints(int pointNumber, RCMemoryMapFile* memMapFile, std::vector<AgVoxelLeafNode>& out) const
 	{
 		if (pointNumber <= 0 || pointNumber > m_amountOfLODPoints[m_maximumLOD - 1])
 		{
@@ -982,8 +983,8 @@ namespace ambergris {
 			memmap.closeFileHandle();
 		}
 
-	}
-	void AgVoxelContainer::updateClipEffectWhenRefinePoints(size_t pointStartIndex)
+	}*/
+	/*void AgVoxelContainer::updateClipEffectWhenRefinePoints(size_t pointStartIndex)
 	{
 		if (m_parentTreePtr->getWorld()->getCanDrawWorld() == false)
 			return;
@@ -999,7 +1000,7 @@ namespace ambergris {
 
 		m_parentTreePtr->getWorld()->getPointSelectionManager() ->
 			refineSelectionEffectOnAgVoxelContainer(this, pointStartIndex);
-	}
+	}*/
 
 	void AgVoxelContainer::clearAllViewId()
 	{
@@ -1047,10 +1048,10 @@ namespace ambergris {
 		return mInternalClipFlag;
 	}
 
-	AgEngineSpatialFilter::FilterResult AgVoxelContainer::getInternalClipEngineFilterResult() const
+	/*AgEngineSpatialFilter::FilterResult AgVoxelContainer::getInternalClipEngineFilterResult() const
 	{
 		return clipFlagToEngineFilterResult(mInternalClipFlag);
-	}
+	}*/
 
 	bool AgVoxelContainer::isInternalClipFlag(ClipFlag rhs) const
 	{
@@ -1066,6 +1067,21 @@ namespace ambergris {
 	{
 		mInternalClipFlag = rhs;
 		updateClipFlag();
+	}
+
+	ClipFlag AgVoxelContainer::intersectClipFlag(
+		const ClipFlag& lhs,
+		const ClipFlag& rhs)
+	{
+		if (lhs == ALL_CLIPPED || rhs == ALL_CLIPPED)
+		{
+			return ALL_CLIPPED;
+		}
+		if (lhs == PARTIAL_CLIPPED || rhs == PARTIAL_CLIPPED)
+		{
+			return PARTIAL_CLIPPED;
+		}
+		return NON_CLIPPED;
 	}
 
 	void AgVoxelContainer::updateClipFlag()
@@ -1096,7 +1112,7 @@ namespace ambergris {
 		return static_cast<std::uint8_t>((m_regionFlag >> 3) & 0x7F);
 	}
 
-	bool AgVoxelContainer::isInheritRegionFlagValid() const
+	/*bool AgVoxelContainer::isInheritRegionFlagValid() const
 	{
 		if (m_parentTreePtr->isRegionFlagValid())
 		{
@@ -1119,7 +1135,7 @@ namespace ambergris {
 			//user should check if the region flag of this voxel container is valid or not first
 			return getRegionIndex();
 		}
-	}
+	}*/
 
 	void AgVoxelContainer::setInTempSelectionFlagInvalid()
 	{
@@ -1150,7 +1166,7 @@ namespace ambergris {
 		m_transformedCenter = center;
 	}
 
-	RCVector3d AgVoxelContainer::getTransformedCenter() const
+	/*RCVector3d AgVoxelContainer::getTransformedCenter() const
 	{
 		RCVector3d center(m_transformedCenter);
 		if (m_parentTreePtr != NULL)
@@ -1167,7 +1183,7 @@ namespace ambergris {
 		}
 
 		return center;
-	}
+	}*/
 	void AgVoxelContainer::setTransformedSVOBound(const RCBox& rhs)
 	{
 		m_transformedSVOBounds = rhs;
@@ -1178,7 +1194,7 @@ namespace ambergris {
 		return m_transformedSVOBounds;
 	}
 
-	RCBox AgVoxelContainer::getMentorTransformedSVOBound() const
+	/*RCBox AgVoxelContainer::getMentorTransformedSVOBound() const
 	{
 		RCBox svoBound = getTransformedSVOBound();
 
@@ -1193,9 +1209,9 @@ namespace ambergris {
 		}
 
 		return svoBound;
-	}
+	}*/
 
-	RealityComputing::Common::RCBox AgVoxelContainer::getSVOBound() const
+	AgBoundingbox::Handle AgVoxelContainer::getSVOBound() const
 	{
 		return m_svoBounds;
 	}
@@ -1209,7 +1225,7 @@ namespace ambergris {
 		return m_nodeRadius;
 	}
 
-	double AgVoxelContainer::getFinestBoundLength()
+	/*double AgVoxelContainer::getFinestBoundLength()
 	{
 		double svoBoundLength = m_svoBounds.getMax().x - m_svoBounds.getMin().x;
 		double minLeafNodeDist = svoBoundLength / pow(2.0, m_maximumLOD - 1);
@@ -1275,7 +1291,7 @@ namespace ambergris {
 		}
 
 		return allVisibleNodeIndices;
-	}
+	}*/
 
 	bool AgVoxelContainer::isComplete(int LOD) const
 	{

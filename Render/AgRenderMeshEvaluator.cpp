@@ -33,14 +33,18 @@ namespace ambergris {
 						dynamic_cast<AgRenderInstanceNode*>(renderNode);
 					if (inst_node)
 					{
-						static const int stride = 16;
-						float instanceData[stride];
-						ret &= (0 != memcpy_s(instanceData, stride * sizeof(float), mesh->m_global_transform, stride * sizeof(float)));
-						instanceData[3] = mesh->m_pick_id[0] / 255.0f;
-						instanceData[7] = mesh->m_pick_id[1] / 255.0f;
-						instanceData[11] = mesh->m_pick_id[2] / 255.0f;
+						const AgCacheTransform* transform = Singleton<AgRenderResourceManager>::instance().m_transforms.get(mesh->m_global_transform_h);
+						if (transform)
+						{
+							static const int stride = 16;
+							float instanceData[stride];
+							transform->getFloatTransform(instanceData);
+							instanceData[3] = mesh->m_pick_id[0] / 255.0f;
+							instanceData[7] = mesh->m_pick_id[1] / 255.0f;
+							instanceData[11] = mesh->m_pick_id[2] / 255.0f;
 
-						ret &= inst_node->appendInstance(instanceData, stride);
+							ret &= inst_node->appendInstance(instanceData, stride);
+						}
 					}
 				}
 			}

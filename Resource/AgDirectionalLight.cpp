@@ -189,7 +189,7 @@ namespace ambergris {
 	}
 
 	/*virtual*/ 
-	void AgDirectionalLight::computeViewSpaceComponents(float* _viewMtx, float projWidth, float projHeight)
+	void AgDirectionalLight::computeViewSpaceComponents(const float* _viewMtx, float projWidth, float projHeight)
 	{
 		memcpy_s(m_viewMtx, 16 * sizeof(float), _viewMtx, 16 * sizeof(float));
 		m_projHeight = projHeight;

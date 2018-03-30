@@ -4,7 +4,7 @@
  */
 
 #include <bx/timer.h>
-#include "Resource/AgCamera.h"
+#include "Scene/AgCamera.h"
 #include "camera.h"
 #include "entry/entry.h"
 #include "entry/cmd.h"

@@ -7,6 +7,7 @@
 #include "Render/AgRenderer.h"
 #include "Resource/AgRenderResourceManager.h"
 #include "FBX/FbxImportManager.h"
+#include "Scene/AgCamera.h"
 #include "Scene/AgSceneDatabase.h"
 #include "Resource/AgSpotLight.h"
 
@@ -81,19 +82,26 @@ public:
 			const AgBoundingbox* bbox = Singleton<AgRenderResourceManager>::instance().m_bboxManager.get(node->m_bbox);
 			if (!bbox || AgBoundingbox::kInvalidHandle == bbox->m_handle)
 				continue;
+
+			const AgCacheTransform* transform = Singleton<AgRenderResourceManager>::instance().m_transforms.get(node->m_global_transform_h);
+			if(!transform)
+				continue;
+
 			Aabb nodeAabb = bbox->m_aabb;
 			float tmpAabb[4];
 			tmpAabb[0] = nodeAabb.m_min[0];
 			tmpAabb[1] = nodeAabb.m_min[1];
 			tmpAabb[2] = nodeAabb.m_min[2];
 			tmpAabb[3] = 1.0f;
+			float transformData[16];
+			transform->getFloatTransform(transformData);
 			float nodeMin[4];
-			bx::vec4MulMtx(nodeMin, tmpAabb, node->m_global_transform);
+			bx::vec4MulMtx(nodeMin, tmpAabb, transformData);
 			tmpAabb[0] = nodeAabb.m_max[0];
 			tmpAabb[1] = nodeAabb.m_max[1];
 			tmpAabb[2] = nodeAabb.m_max[2];
 			float nodeMax[4];
-			bx::vec4MulMtx(nodeMax, tmpAabb, node->m_global_transform);
+			bx::vec4MulMtx(nodeMax, tmpAabb, transformData);
 
 			if (nodeMin[0] < sceneAabb.m_min[0])
 				sceneAabb.m_min[0] = nodeMin[0];
@@ -160,18 +168,8 @@ public:
 		}
 
 		AgCameraView* view0 = Singleton<AgRenderResourceManager>::instance().m_views.get(0);
-		view0->m_width = m_width;
-		view0->m_height = m_height;
-		view0->m_pass = AgRenderPass::E_VIEW_MAIN;
-		m_camera = &(view0->m_camera);
+		view0->setCamera(&m_camera0, AgRenderPass::E_VIEW_MAIN, m_width, m_height);
 		view0->m_handle = 0;
-		AgCameraView* view1 = Singleton<AgRenderResourceManager>::instance().m_views.get(1);
-		view1->m_x = 10;
-		view1->m_y = m_height - m_height / 4 - 10;
-		view1->m_width = m_width / 4;
-		view1->m_height = m_height / 4;
-		view1->m_pass = AgRenderPass::E_VIEW_SECOND;
-		//view1->m_handle = 1;
 
 		std::shared_ptr<AgLight> light(BX_NEW(entry::getAllocator(), AgSpotLight));
 		light->m_position.m_x = 20.0f;
@@ -243,7 +241,7 @@ public:
 
 			if (ImGui::Button("Focus"))
 			{
-				focusView(m_camera);
+				focusView(&m_camera0);
 			}
 
 			if (ImGui::Button("Clear"))
@@ -317,33 +315,29 @@ public:
 				//// might be much larger than window size.
 				//bgfx::setViewRect(0, 0, 0, hmd->width, hmd->height);
 			}
-			else if(m_camera)
+			else
 			{
 				if (!ImGui::MouseOverArea())
 				{
 					m_mouse.update(float(m_mouseState.m_mx), float(m_mouseState.m_my), m_mouseState.m_mz, m_width, m_height);
 					if (m_mouseState.m_buttons[entry::MouseButton::Left])
 					{
-						m_camera->orbit(m_mouse.m_dx, m_mouse.m_dy);
+						m_camera0.orbit(m_mouse.m_dx, m_mouse.m_dy);
 					}
 					else if (m_mouseState.m_buttons[entry::MouseButton::Right])
 					{
-						m_camera->dolly(m_mouse.m_dx + m_mouse.m_dy);
+						m_camera0.dolly(m_mouse.m_dx + m_mouse.m_dy);
 					}
 					else if (0 != m_mouse.m_scroll)
 					{
-						m_camera->dolly(float(m_mouse.m_scroll)*0.1f);
+						m_camera0.dolly(float(m_mouse.m_scroll)*0.1f);
 					}
 				}
-				m_camera->update(deltaTime);
+				m_camera0.update(deltaTime);
 
 				{
-					AgCameraView* view1 = Singleton<AgRenderResourceManager>::instance().m_views.get(1);
-					if (view1 && AgCameraView::kInvalidHandle != view1->m_handle)
-					{
-						view1->m_camera = *m_camera;
-						view1->m_camera.reverseView();
-					}
+					m_camera1 = m_camera0;
+					m_camera1.reverseView();
 				}
 
 				if (m_mouseState.m_click)
@@ -356,6 +350,12 @@ public:
 					Singleton<AgRenderer>::instance().updatePickingInfo(mouseXNDC, mouseYNDC);
 				}
 			}
+
+			AgCameraView* view0 = Singleton<AgRenderResourceManager>::instance().m_views.get(0);
+			view0->setCamera(&m_camera0, AgRenderPass::E_VIEW_MAIN, m_width, m_height);
+			AgCameraView* view1 = Singleton<AgRenderResourceManager>::instance().m_views.get(1);
+			view1->setCamera(&m_camera1, AgRenderPass::E_VIEW_SECOND, m_width / 4, m_height / 4, 10, m_height - m_height / 4 - 10);
+			//view1->m_handle = 1;
 
 			Singleton<AgRenderer>::instance().updateTime(m_time);
 			Singleton<AgRenderer>::instance().evaluateScene();
@@ -406,7 +406,8 @@ public:
 	Mouse				m_mouse;
 	entry::MouseState	m_mouseState;
 
-	AgCamera* m_camera;
+	AgCamera m_camera0;
+	AgCamera m_camera1;
 	uint32_t m_width;
 	uint32_t m_height;
 	uint32_t m_debug;

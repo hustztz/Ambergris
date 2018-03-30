@@ -5,6 +5,8 @@
 #include "AgOctreeDefinitions.h"
 #include "AgEngineSpatialFilter.h"
 
+#include "Resource/AgBoundingbox.h"
+
 #include <utility/RCMutex.h>
 
 #include <vector>
@@ -17,8 +19,14 @@ namespace ambergris {
 			class RCMemoryMapFile;
 		}
 	}
-	class AgVoxelTreeRunTime;
 	class CropVolume;
+
+	enum ClipFlag
+	{
+		ALL_CLIPPED = 0,
+		NON_CLIPPED,
+		PARTIAL_CLIPPED
+	};
 
 	//////////////////////////////////////////////////////////////////////////
 	//\brief:  VoxelContainer 'Container' for storing pointcloud/voxel cache
@@ -26,13 +34,6 @@ namespace ambergris {
 	class AgVoxelContainer
 	{
 	public:
-		enum ClipFlag
-		{
-			ALL_CLIPPED = 0,
-			NON_CLIPPED,
-			PARTIAL_CLIPPED
-		};
-
 		//////////////////////////////////////////////////////////////////////////
 		// \brief: For each voxel container also keep track which are its neighbour
 		//         containers across multiple scans & itself
@@ -148,13 +149,21 @@ namespace ambergris {
 		void                                    setTransformedSVOBound(const RealityComputing::Common::RCBox& rhs);
 		RealityComputing::Common::RCBox                        getTransformedSVOBound() const;
 		RealityComputing::Common::RCBox                        getMentorTransformedSVOBound() const;
-		RealityComputing::Common::RCBox                        getSVOBound() const;
+		AgBoundingbox::Handle                        getSVOBound() const;
 		void                                    setTransformedNodeRadius(double rhs);
 		double                                  getTransformedNodeRadius() const;
 
 		bool                                    isComplete(int LOD) const;
 
 		double                                  getFinestBoundLength();
+
+		AgResource::Handle				getParentTreeHandle() const { return m_parentTreeHandle; }
+
+
+		static ClipFlag intersectClipFlag(
+			const ClipFlag& lhs,
+			const ClipFlag& rhs);
+
 
 		void updatePersistentDeleteFlags(RealityComputing::Common::RCMemoryMapFile* memMapFile);
 		void clearPersistentDeleteFlags(RealityComputing::Common::RCMemoryMapFile* memMapFile);
@@ -167,8 +176,6 @@ namespace ambergris {
 
 
 
-		//TODO make private
-		AgVoxelTreeRunTime*                       m_parentTreePtr;
 		int                                     m_currentLODLoaded;             //LOD level loaded in cache
 		int                                     m_currentDrawLOD;               //LOD currently used for drawing
 		int                                     m_maximumLOD;                   //maximum LOD stored in file
@@ -193,8 +200,8 @@ namespace ambergris {
 		std::vector<NeighbourInformation>       m_neighbourList;                //neighbor list( intersecting voxel containers )
 
 
-		RealityComputing::Common::RCBox                       m_nodeBounds,                   //node bounds
-			m_svoBounds;                    //voxel bounds
+		AgBoundingbox::Handle                   m_nodeBounds;                   //node bounds
+		AgBoundingbox::Handle					m_svoBounds;                    //voxel bounds
 											//TODO: we shall check if we are allowed to change the stack sequence of class members
 											//      and stack public/private member together.
 	private:
@@ -204,6 +211,7 @@ namespace ambergris {
 																		//TODO: we shall check if we are allowed to change the stack sequence of class members
 																		//      and stack public/private member together.
 	private:
+		AgResource::Handle              m_parentTreeHandle;
 		double                                  m_nodeRadius;                   //radius of this container in meters
 	public:
 		//TODO move this to interfaces?

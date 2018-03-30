@@ -94,7 +94,7 @@ namespace ambergris {
 
 		virtual ~AgLight(){}
 		virtual void prepareShadowMap(float (*view)[16], float (*proj)[16], bool isLinearDepth, uint16_t currentShadowMapSize) {}
-		virtual void computeViewSpaceComponents(float* _viewMtx, float projWidth, float projHeight)
+		virtual void computeViewSpaceComponents(const float* _viewMtx, float projWidth, float projHeight)
 		{
 			bx::vec4MulMtx(m_position_viewSpace, m_position.m_v, _viewMtx);
 

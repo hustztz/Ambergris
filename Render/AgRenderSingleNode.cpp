@@ -16,7 +16,7 @@ namespace ambergris {
 
 	/*virtual*/
 	bool AgRenderSingleNode::appendGeometry(
-		const float* transform,
+		AgCacheTransform::Handle transform,
 		AgMaterial::Handle material,
 		AgBoundingbox::Handle bbox,
 		const uint32_t* pick_id,

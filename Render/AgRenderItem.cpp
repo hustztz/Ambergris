@@ -40,7 +40,6 @@ namespace ambergris {
 		const uint8_t* vertBuf, uint32_t vertSize,
 		const uint16_t* indexBuf, uint32_t indexSize)
 	{
-		_ResetTransform();
 		_SetVertexBuffer(decl, vertBuf, vertSize);
 		_SetIndexBuffer(indexBuf, indexSize);
 	}
@@ -69,24 +68,21 @@ namespace ambergris {
 
 	void AgRenderItem::submit() const
 	{
-		bgfx::setTransform(m_mtx);
 		const AgMaterial* mat = Singleton<AgRenderResourceManager>::instance().m_materials.get(m_material_handle);
 		if (!mat)
 			return;
 		//TODO
 
+		const AgCacheTransform* transform = Singleton<AgRenderResourceManager>::instance().m_transforms.get(m_transform);
+		if (transform)
+		{
+			float transformData[16];
+			transform->getFloatTransform(transformData);
+			bgfx::setTransform(transformData);
+		}
+
 		bgfx::setIndexBuffer(m_ibh);
 		bgfx::setVertexBuffer(0, m_vbh);
-	}
-
-	void AgRenderItem::setTransform(const float* mtx)
-	{
-		if(mtx)
-			memcpy_s(m_mtx, 16 * sizeof(float), mtx, 16 * sizeof(float));
-		else
-		{
-			_ResetTransform();
-		}
 	}
 
 	void AgRenderItem::setPickID(const uint32_t* id)
@@ -96,15 +92,6 @@ namespace ambergris {
 
 		memcpy_s(m_pick_id, sizeof(uint32_t)*3, id, sizeof(uint32_t) * 3);
 	}
-
-	void AgRenderItem::_ResetTransform()
-	{
-		m_mtx[0] = m_mtx[5] = m_mtx[9] = m_mtx[15] = 1.0f;
-		m_mtx[1] = m_mtx[2] = m_mtx[3] = m_mtx[4] =
-			m_mtx[6] = m_mtx[7] = m_mtx[8] = m_mtx[10] =
-			m_mtx[11] = m_mtx[12] = m_mtx[13] = m_mtx[14] = 0.0f;
-	}
-
 
 	void AgRenderItem::enableOcclusionQuery()
 	{

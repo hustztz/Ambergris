@@ -801,16 +801,23 @@ namespace ambergris_fbx {
 		{
 			m_originPosition = lGlobalPosition;
 		}
+		double global_transform[16];
 		for (int m = 0; m < 4; m++)
 		{
 			for (int n = 0; n < 4; n++)
 			{
-				sceneMesh->m_global_transform[m*4+n] = (float)lGlobalPosition.Get(m, n);
+				global_transform[m*4+n] = (float)lGlobalPosition.Get(m, n);
 			}
 		}
-		sceneMesh->m_global_transform[12] = sceneMesh->m_global_transform[12] - (float)m_originPosition.Get(3, 0);
-		sceneMesh->m_global_transform[13] = sceneMesh->m_global_transform[13] - (float)m_originPosition.Get(3, 1);
-		sceneMesh->m_global_transform[14] = sceneMesh->m_global_transform[14] - (float)m_originPosition.Get(3, 2);
+		global_transform[12] = global_transform[12] - m_originPosition.Get(3, 0);
+		global_transform[13] = global_transform[13] - m_originPosition.Get(3, 1);
+		global_transform[14] = global_transform[14] - m_originPosition.Get(3, 2);
+
+
+		std::shared_ptr<AgCacheTransform> cacheTransform(BX_NEW(entry::getAllocator(), AgCacheTransform));
+		cacheTransform->setTransform(global_transform);
+		sceneMesh->m_global_transform_h = Singleton<AgRenderResourceManager>::instance().m_transforms.append(cacheTransform);
+
 		FbxAMatrix lLocalPosition = node->EvaluateLocalTransform();
 		for (int m = 0; m < 4; m++)
 		{

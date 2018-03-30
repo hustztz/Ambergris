@@ -18,7 +18,7 @@ namespace ambergris {
 
 		virtual void draw(const ViewIdArray& views, const AgFxSystem* pFxSystem, int32_t occlusionCulling) const override;
 		virtual bool appendGeometry(
-			const float* transform,
+			AgCacheTransform::Handle transform,
 			AgMaterial::Handle material,
 			AgBoundingbox::Handle bbox,
 			const uint32_t* pick_id,
@@ -28,9 +28,9 @@ namespace ambergris {
 		virtual const AgRenderItem* getItem(uint16_t id) const override;
 
 		void appendItem(const AgRenderItem* item) { m_pItem = item; }
-		void setTransform(const float* mtx);
+		void setTransform(AgCacheTransform::Handle transform) { m_transform = transform; }
 	protected:
 		const AgRenderItem*		m_pItem;
-		float					m_mtx[16];
+		AgCacheTransform::Handle		m_transform;
 	};
 }

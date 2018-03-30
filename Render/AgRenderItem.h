@@ -4,6 +4,7 @@
 #include "Resource/AgTexture.h"
 #include "Resource/AgShader.h"
 #include "Resource/AgBoundingBox.h"
+#include "Resource/AgCacheTransform.h"
 
 #include <atomic>
 
@@ -38,7 +39,7 @@ namespace ambergris {
 			const bgfx::VertexDecl& decl,
 			const uint8_t* vertBuf, uint32_t vertSize,
 			const uint16_t* indexBuf, uint32_t indexSize);
-		void setTransform(const float* mtx);
+		void setTransform(AgCacheTransform::Handle transform) { m_transform = transform; }
 		void setPickID(const uint32_t* id);
 
 		void destroyBuffers();
@@ -50,7 +51,6 @@ namespace ambergris {
 		void enableOcclusionQuery();
 		void disableOcclusionQuery();
 	protected:
-		void _ResetTransform();
 		void _SetVertexBuffer(const bgfx::VertexDecl& decl, const uint8_t* buffer, uint32_t size);
 		void _SetIndexBuffer(const uint16_t* buffer, uint32_t size);
 
@@ -61,7 +61,7 @@ namespace ambergris {
 		bgfx::OcclusionQueryHandle	m_oqh;
 		bgfx::VertexBufferHandle	m_vbh;
 		bgfx::IndexBufferHandle		m_ibh;
-		float						m_mtx[16];
+		AgCacheTransform::Handle	m_transform;
 		uint32_t					m_pick_id[3];
 		uint32_t					m_occlusion_threshold;
 		AgMaterial::Handle			m_material_handle;

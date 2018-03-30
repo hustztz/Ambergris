@@ -17,11 +17,12 @@ namespace ambergris {
 			bgfx::destroy(m_instance_db);
 			m_instance_db = BGFX_INVALID_HANDLE;
 		}
+		m_transformHandles.clear();
 	}
 
 	/*virtual*/
 	bool AgRenderInstanceNode::appendGeometry(
-		const float* transform,
+		AgCacheTransform::Handle transformHandle,
 		AgMaterial::Handle material,
 		AgBoundingbox::Handle bbox,
 		const uint32_t* pick_id,
@@ -30,7 +31,7 @@ namespace ambergris {
 		const uint16_t* indexBuf, uint32_t indexSize)
 	{
 		bool ret = AgRenderSingleNode::appendGeometry(
-			nullptr,
+			AgCacheTransform::kInvalidHandle,
 			material,
 			AgBoundingbox::kInvalidHandle,
 			nullptr,
@@ -40,15 +41,21 @@ namespace ambergris {
 		if (!ret)
 			return false;
 
+		const AgCacheTransform* transform = Singleton<AgRenderResourceManager>::instance().m_transforms.get(transformHandle);
+		if (!transform)
+			return false;
+
 		// need reprepare
 		m_evaluated = false;
 
 		if (!bgfx::isValid(m_instance_db))
 			m_instance_db = bgfx::createDynamicVertexBuffer(1, ms_inst_decl, BGFX_BUFFER_ALLOW_RESIZE);
 
+		m_transformHandles.push_back(transformHandle);
+		
 		static const int stride = 16;
 		float instanceData[stride];
-		ret &= (0 != memcpy_s(instanceData, stride * sizeof(float), transform, stride * sizeof(float)));
+		transform->getFloatTransform(instanceData);
 		instanceData[3] = pick_id[0] / 255.0f;
 		instanceData[7] = pick_id[1] / 255.0f;
 		instanceData[11] = pick_id[2] / 255.0f;
@@ -168,12 +175,11 @@ namespace ambergris {
 	}
 
 	/*virtual*/
-	const float* AgRenderInstanceNode::getTransform(uint16_t id) const
+	AgCacheTransform::Handle AgRenderInstanceNode::getTransform(uint16_t id) const
 	{
-		uint16_t transformPos = id * m_stride;
-		if(transformPos + 16 > (uint16_t)m_instance_buffer.GetSize())
-			return nullptr;
+		if (id >= m_transformHandles.size())
+			return AgCacheTransform::kInvalidHandle;
 
-		return m_instance_buffer.GetData() + transformPos;
+		return m_transformHandles.at(id);
 	}
 }

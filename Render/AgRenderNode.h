@@ -3,6 +3,7 @@
 #include "Resource/AgTexture.h"
 #include "Resource/AgMaterial.h"
 #include "Resource/AgBoundingBox.h"
+#include "Resource/AgCacheTransform.h"
 
 namespace ambergris {
 
@@ -26,7 +27,7 @@ namespace ambergris {
 		virtual void destroy();
 		virtual void draw(const ViewIdArray& views, const AgFxSystem* pFxSystem, int32_t occlusionCulling) const = 0;
 		virtual bool appendGeometry(
-			const float* transform,
+			AgCacheTransform::Handle transform,
 			AgMaterial::Handle material,
 			AgBoundingbox::Handle bbox,
 			const uint32_t* pick_id,
@@ -34,7 +35,7 @@ namespace ambergris {
 			const uint8_t* vertBuf, uint32_t vertSize,
 			const uint16_t* indexBuf, uint32_t indexSize) = 0;
 		virtual const AgRenderItem* getItem(uint16_t id) const = 0;
-		virtual const float* getTransform(uint16_t id) const { return nullptr; }
+		virtual AgCacheTransform::Handle getTransform(uint16_t id) const { return AgCacheTransform::kInvalidHandle; }
 
 		bool isTransparent() const { return ((m_renderState.m_state & BGFX_STATE_BLEND_ALPHA) != 0); } //TODO
 		void setTexture(uint8_t slot, AgTexture::Handle tex_handle);

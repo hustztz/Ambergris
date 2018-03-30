@@ -42,7 +42,7 @@ namespace ambergris {
 				renderNode->setTexture(tex_stage, texture_handle);
 			}
 			if (!renderNode->appendGeometry(
-				mesh->m_global_transform,
+				mesh->m_global_transform_h,
 				pGeometry->material_handle,
 				mesh->m_bbox,
 				mesh->m_pick_id,

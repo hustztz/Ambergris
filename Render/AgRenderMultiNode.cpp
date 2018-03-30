@@ -25,7 +25,7 @@ namespace ambergris {
 
 	/*virtual*/
 	bool AgRenderMultiNode::appendGeometry(
-		const float* transform,
+		AgCacheTransform::Handle transform,
 		AgMaterial::Handle material,
 		AgBoundingbox::Handle bbox,
 		const uint32_t* pick_id,
@@ -131,5 +131,15 @@ namespace ambergris {
 			return nullptr;
 
 		return m_items.at(id);
+	}
+
+	/*virtual*/
+	AgCacheTransform::Handle AgRenderMultiNode::getTransform(uint16_t id) const
+	{
+		const AgRenderItem* item = getItem(id);
+		if (!item)
+			return AgCacheTransform::kInvalidHandle;
+
+		return item->m_transform;
 	}
 }

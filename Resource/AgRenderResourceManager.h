@@ -8,6 +8,7 @@
 #include "AgLight.h"
 #include "AgCameraView.h"
 #include "AgBoundingBox.h"
+#include "AgCacheTransform.h"
 #include "AgTextManager.h"
 #include "Foundation/Singleton.h"
 
@@ -30,6 +31,7 @@ namespace ambergris {
 		AgTextureManager		m_textures;
 		AgBoundingBoxManager	m_bboxManager;
 		AgCameraViewManager		m_views;
+		AgTransformManager		m_transforms;
 		AgTextManager			m_text;
 	private:
 		AgRenderResourceManager();

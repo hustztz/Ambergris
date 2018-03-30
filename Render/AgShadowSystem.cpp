@@ -453,7 +453,13 @@ namespace ambergris {
 
 		if (m_light && typeid(AgDirectionalLight) == typeid(*m_light))
 		{
-			bx::mtxMul(m_lightMtx, item->m_mtx, m_mtxShadow); //not needed for directional light
+			const AgCacheTransform* transform = Singleton<AgRenderResourceManager>::instance().m_transforms.get(item->m_transform);
+			if (transform)
+			{
+				float transformData[16];
+				transform->getFloatTransform(transformData);
+				bx::mtxMul(m_lightMtx, transformData, m_mtxShadow); //not needed for directional light
+			}
 		}
 
 		for (uint8_t ii = 0; ii < m_target_num; ++ii)

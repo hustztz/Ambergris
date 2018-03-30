@@ -19,7 +19,7 @@ namespace ambergris {
 		virtual void destroy() override;
 		virtual void draw(const ViewIdArray& views, const AgFxSystem* pFxSystem, int32_t occlusionCulling) const override;
 		virtual bool appendGeometry(
-			const float* transform,
+			AgCacheTransform::Handle transform,
 			AgMaterial::Handle material,
 			AgBoundingbox::Handle bbox,
 			const uint32_t* pick_id,
