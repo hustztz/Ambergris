@@ -22,6 +22,8 @@ namespace ambergris {
 	public:
 		AgBoundingBoxManager() : AgResourcePool<AgBoundingbox>(), m_dirty(false) {}
 
+		bool setBoundingBox(AgBoundingbox::Handle& id, const float* min, const float* max);
+
 		std::atomic<bool>		m_dirty;
 	};
 }

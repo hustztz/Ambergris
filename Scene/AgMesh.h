@@ -31,6 +31,7 @@ namespace ambergris {
 #endif
 		Geometries		m_geometries;
 		int				m_inst_handle;
+		float			m_local_transform[16];//TODO
 		uint32_t		m_pick_id[3];
 		bool			m_bShadowCaster;		// Initial shadow preference (overridden by renderables section of .unit)
 

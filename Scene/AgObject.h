@@ -18,13 +18,12 @@ namespace ambergris {
 		}
 		virtual ~AgObject() {}
 
-		virtual void setGlobalPosition(double* val);
+		//virtual void setGlobalPosition(double* val);
 		bool isVisible() const { return m_isVisible; }
 
 		AgBoundingbox::Handle	m_bbox;
 		stl::string		m_name;
 		Handle			m_parent_handle;
-		float			m_local_transform[16];
 		AgCacheTransform::Handle	m_global_transform_h;
 		bool            m_isVisible;
 		std::atomic<bool>	m_dirty;

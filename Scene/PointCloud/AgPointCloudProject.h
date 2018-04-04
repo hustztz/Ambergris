@@ -86,7 +86,7 @@ namespace ambergris {
 		//////////////////////////////////////////////////////////////////////////
 		// \brief: Adds a new scan to this project
 		//////////////////////////////////////////////////////////////////////////
-		bool				addScan(AgVoxelTreeRunTime* treePtr);
+		bool				addScan(std::shared_ptr<AgVoxelTreeRunTime> treePtr);
 
 		//////////////////////////////////////////////////////////////////////////
 		// \brief: Unloads a project
@@ -115,13 +115,15 @@ namespace ambergris {
 		//////////////////////////////////////////////////////////////////////////
 		void                            updateProjectBounds();
 
+		void                        setLightWeight(bool val) { mLightWeight = val; }
+		bool                        getLightWeight() const { return mLightWeight; }
 
 	protected:
 		//////////////////////////////////////////////////////////////////////////
 		// \brief: Perform frustum culling to determine the visible tree's,
 		//  returns amount of visible scans
 		//////////////////////////////////////////////////////////////////////////
-		int			_DoPerformFrustumCulling(std::vector<PointCloudInformation> &visibleListOut);
+		int			_DoPerformFrustumCulling(std::vector<PointCloudInformation> &visibleListOut) const;
 		//////////////////////////////////////////////////////////////////////////
 		// \brief: Returns the visible voxel containers from an individual scan
 		//////////////////////////////////////////////////////////////////////////
@@ -139,8 +141,6 @@ namespace ambergris {
 		int        _ReducePointCloudLoad(std::uint32_t amountOfPointsVisible, AgCameraView::Handle view, std::vector<ScanContainerID>& voxelContainerListOut);
 
 	private:
-		std::vector<AgVoxelTreeRunTime*>    m_scanList;
-
 		POINTCLOUD_CULL_METHOD              mCullMethod;
 		bool								mLightWeight;
 
@@ -149,7 +149,7 @@ namespace ambergris {
 		//Maximum amount of points to be streamed in/ display at any given time, in millions
 		std::uint32_t                       mMaxPointsLoad;
 
-		double								m_geoReference[3];
+		RealityComputing::Common::RCVector3d		m_geoReference;
 		RealityComputing::Common::RCTransform         mToGlobalFromWorld;
 
 		RealityComputing::Common::RCBox                   m_visibleProjectBounds;

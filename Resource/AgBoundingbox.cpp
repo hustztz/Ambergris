@@ -41,4 +41,35 @@ namespace ambergris {
 
 		m_sphere.m_radius += val;
 	}
+
+	bool AgBoundingBoxManager::setBoundingBox(AgBoundingbox::Handle& id, const float* min, const float* max)
+	{
+		if (!min || !max)
+			return false;
+
+		AgBoundingbox* bounds = get(id);
+		if (bounds)
+		{
+			bounds->m_aabb.m_min[0] = min[0];
+			bounds->m_aabb.m_min[1] = min[1];
+			bounds->m_aabb.m_min[2] = min[2];
+			bounds->m_aabb.m_max[0] = max[0];
+			bounds->m_aabb.m_max[1] = max[1];
+			bounds->m_aabb.m_max[2] = max[2];
+		}
+		else
+		{
+			std::shared_ptr<AgBoundingbox> newBbox(new AgBoundingbox);
+			newBbox->m_aabb.m_min[0] = min[0];
+			newBbox->m_aabb.m_min[1] = min[1];
+			newBbox->m_aabb.m_min[2] = min[2];
+			newBbox->m_aabb.m_max[0] = max[0];
+			newBbox->m_aabb.m_max[1] = max[1];
+			newBbox->m_aabb.m_max[2] = max[2];
+			id = append(newBbox);
+		}
+
+		m_dirty = true;
+		return AgBoundingbox::kInvalidHandle != id;
+	}
 }

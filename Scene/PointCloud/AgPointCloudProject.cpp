@@ -116,7 +116,11 @@ namespace ambergris {
 			for (size_t i = 0; i < voxelContainerListOut.size(); i++)
 			{
 				ScanContainerID& contId = voxelContainerListOut[i];
-				AgVoxelContainer* containerPTr = m_scanList[contId.m_scanId]->getVoxelContainerAt(contId.m_containerId);
+				const AgVoxelTreeRunTime* voxelTree = get(contId.m_scanId);
+				if(!voxelTree || AgVoxelTreeRunTime::kInvalidHandle == voxelTree->m_handle)
+					continue;
+
+				const AgVoxelContainer* containerPTr = voxelTree->getVoxelContainerAt(contId.m_containerId);
 				std::uint8_t& lodLevel = contId.m_LODs[view].m_LOD; //fetch lod
 				std::uint32_t& lodCount = contId.m_LODs[view].m_pointCount;
 				if (lodLevel > 0)
@@ -142,7 +146,10 @@ namespace ambergris {
 		for (size_t i = 0; i < voxelContainerListOut.size(); i++)
 		{
 			const ScanContainerID& contId = voxelContainerListOut[i];
-			AgVoxelContainer* containerPTr = m_scanList[contId.m_scanId]->getVoxelContainerAt(contId.m_containerId);
+			const AgVoxelTreeRunTime* voxelTree = get(contId.m_scanId);
+			if (!voxelTree || AgVoxelTreeRunTime::kInvalidHandle == voxelTree->m_handle)
+				continue;
+			const AgVoxelContainer* containerPTr = voxelTree->getVoxelContainerAt(contId.m_containerId);
 			std::uint8_t lod = getLOD(contId, view).m_LOD;
 			lod = std::min(lod, (uint8_t)(32 - 1));
 			numPoints += containerPTr->m_amountOfLODPoints[lod];
@@ -164,7 +171,11 @@ namespace ambergris {
 			for (size_t i = 0; i < voxelContainerListOut.size(); i++)
 			{
 				ScanContainerID& contId = voxelContainerListOut[i];
-				AgVoxelContainer* containerPTr = m_scanList[contId.m_scanId]->getVoxelContainerAt(contId.m_containerId);
+				const AgVoxelTreeRunTime* voxelTree = get(contId.m_scanId);
+				if (!voxelTree || AgVoxelTreeRunTime::kInvalidHandle == voxelTree->m_handle)
+					continue;
+
+				const AgVoxelContainer* containerPTr = voxelTree->getVoxelContainerAt(contId.m_containerId);
 				std::uint8_t& lodLevel = contId.m_LODs[view].m_LOD; //fetch lod
 				std::uint32_t& lodCount = contId.m_LODs[view].m_pointCount;
 				if (lodLevel > 0)
@@ -187,16 +198,15 @@ namespace ambergris {
 	{
 		std::wstring cs = L"";
 
-		size_t scansCount = m_scanList.size();
-		if (scansCount == 0)
+		if (getSize() == 0)
 		{
 			return cs;
 		}
 
-		for (size_t i = 0; i < scansCount; i++)
+		for (uint16_t i = 0; i < getSize(); i++)
 		{
-			AgVoxelTreeRunTime* runtimeTree = m_scanList.at(i);
-			if (runtimeTree != NULL)
+			const AgVoxelTreeRunTime* runtimeTree = get(i);
+			if (runtimeTree != NULL && AgVoxelTreeRunTime::kInvalidHandle != runtimeTree->m_handle)
 			{
 				const std::wstring coordinateSys = runtimeTree->getOriginalCoordinateSystem();
 				if (i == 0)
@@ -221,16 +231,15 @@ namespace ambergris {
 	{
 		std::wstring cs = L"";
 
-		size_t scansCount = m_scanList.size();
-		if (scansCount == 0)
+		if (getSize() == 0)
 		{
 			return cs;
 		}
 
-		for (size_t i = 0; i < scansCount; i++)
+		for (uint16_t i = 0; i < getSize(); i++)
 		{
-			AgVoxelTreeRunTime* runtimeTree = m_scanList.at(i);
-			if (runtimeTree != NULL)
+			const AgVoxelTreeRunTime* runtimeTree = get(i);
+			if (runtimeTree != NULL && AgVoxelTreeRunTime::kInvalidHandle != runtimeTree->m_handle)
 			{
 				const std::wstring coordinateSys = runtimeTree->getTargetCoordinateSystem();
 				if (i == 0)
@@ -255,13 +264,17 @@ namespace ambergris {
 	{
 		m_visibleProjectBounds.clear();
 		m_projectBounds.clear();
-		for (const auto& s : m_scanList)
+		for (uint16_t i = 0; i < getSize(); i++)
 		{
-			const auto scanBounds = s->getTransformedBounds();
+			const AgVoxelTreeRunTime* curTreePtr = get(i);
+			if (!curTreePtr || AgVoxelTreeRunTime::kInvalidHandle == curTreePtr->m_handle)
+				continue;
+
+			const auto scanBounds = curTreePtr->getTransformedBounds();
 			auto boundsLength = scanBounds.getMax().distanceSqrd(scanBounds.getMin());
 			if (isinf(boundsLength) || isnan(boundsLength))
 				continue;
-			if (s->isVisible())
+			if (curTreePtr->isVisible())
 			{
 				m_visibleProjectBounds.updateBounds(scanBounds);
 			}
@@ -276,16 +289,19 @@ namespace ambergris {
 	{
 		mToGlobalFromWorld = toGlobalFromWorld;
 
-		for (size_t i = 0; i < m_scanList.size(); i++)
+		for (uint16_t i = 0; i < getSize(); i++)
 		{
-			AgVoxelTreeRunTime* curTreePtr = m_scanList[i];
+			AgVoxelTreeRunTime* curTreePtr = get(i);
+			if (!curTreePtr || AgVoxelTreeRunTime::kInvalidHandle == curTreePtr->m_handle)
+				continue;
+
 			curTreePtr->setAdditionalTransform(mToGlobalFromWorld);
 
 			curTreePtr->updateAll();
 		}
 
 		updateProjectBounds();
-		updateSpatialFilters();
+		//updateSpatialFilters();
 	}
 
 	//////////////////////////////////////////////////////////////////////////
@@ -296,7 +312,7 @@ namespace ambergris {
 		return mToGlobalFromWorld;
 	}
 
-	bool AgPointCloudProject::addScan(AgVoxelTreeRunTime* treePtr)
+	bool AgPointCloudProject::addScan(std::shared_ptr<AgVoxelTreeRunTime> treePtr)
 	{
 		if (!treePtr)
 		{
@@ -304,9 +320,13 @@ namespace ambergris {
 		}
 
 		// check if the voxel tree is already added, duplicate voxel trees are not allowed
-		for (size_t i = 0; i < m_scanList.size(); i++)
+		for (uint16_t i = 0; i < getSize(); i++)
 		{
-			if (m_scanList.at(i)->getId() == treePtr->getId())
+			const AgVoxelTreeRunTime* curTreePtr = get(i);
+			if (!curTreePtr || AgVoxelTreeRunTime::kInvalidHandle == curTreePtr->m_handle)
+				continue;
+
+			if (curTreePtr->getId() == treePtr->getId())
 			{
 				return false;
 			}
@@ -323,52 +343,52 @@ namespace ambergris {
 		}
 
 		//if geoReference is set for this project, we need to also set geoReference for this new scan
-		if (m_geoReference[0] > 1.0e-6 || m_geoReference[1] > 1.0e-6 || m_geoReference[2] > 1.0e-6)
+		if (m_geoReference.length() > 1.0e-6)
 		{
 			treePtr->setGeoReference(m_geoReference);
-			double pos[3];
-			pos[0] = treePtr->getOriginalTranslation()[0] - m_geoReference[0];
-			pos[1] = treePtr->getOriginalTranslation()[1] - m_geoReference[1];
-			pos[2] = treePtr->getOriginalTranslation()[2] - m_geoReference[2];
-			treePtr->setGlobalPosition(pos);
+			AgCacheTransform* transform = Singleton<AgRenderResourceManager>::instance().m_transforms.get(treePtr->m_global_transform_h);
+			if (transform && AgCacheTransform::kInvalidHandle != transform->m_handle)
+			{
+				transform->m_transform.setTranslation(treePtr->getOriginalTranslation() - m_geoReference);
+			}
 		}
 
 		// Apply any existing UCS.
 		treePtr->setAdditionalTransform(mToGlobalFromWorld);
 		treePtr->updateAll();
 
-		m_worldPtr->finishPointLoading();
-		m_worldPtr->setWorldDirty(true);
+		/*m_worldPtr->finishPointLoading();
+		m_worldPtr->setWorldDirty(true);*/
 
-		m_scanList.push_back(treePtr);
+		append(treePtr);
 		updateProjectBounds();
 
 		// For each filter, create a transformed version for this new tree
-		RCTransform transInv = treePtr->getTransform().getInverse(TransformType::Rigid);
-		for (FilterMap::iterator iFilt = m_filters.begin(); iFilt != m_filters.end(); ++iFilt)
-		{
-			Interface::ARCSpatialFilter* filterTrans = iFilt->first->transformFilter(transInv);
-			iFilt->second.push_back(filterTrans);
-			treePtr->addSpatialFilter(filterTrans);
-		}
+		//RCTransform transInv = treePtr->getTransform().getInverse(TransformType::Rigid);
+		//for (FilterMap::iterator iFilt = m_filters.begin(); iFilt != m_filters.end(); ++iFilt)
+		//{
+		//	Interface::ARCSpatialFilter* filterTrans = iFilt->first->transformFilter(transInv);
+		//	iFilt->second.push_back(filterTrans);
+		//	treePtr->addSpatialFilter(filterTrans);
+		//}
 
-		alLimitBox *limBox = m_worldPtr->getActiveLimitBox();
-		if (limBox)
-		{
-			const std::wstring limBoxName = limBox->getNodeName();
+		//alLimitBox *limBox = m_worldPtr->getActiveLimitBox();
+		//if (limBox)
+		//{
+		//	const std::wstring limBoxName = limBox->getNodeName();
 
-			limBox->fromBounds(m_worldPtr->getExpandedBoundingBox());
-			if (limBox->getFirstTime())
-			{
-				limBox->setFirstTime(false);
-			}
-			else
-			{
-				// Because that LimitBox::fromBounds sets the node name to "Default",
-				// restore its name after the fromBounds call.
-				limBox->setNodeName(limBoxName);
-			}
-		}
+		//	limBox->fromBounds(m_worldPtr->getExpandedBoundingBox());
+		//	if (limBox->getFirstTime())
+		//	{
+		//		limBox->setFirstTime(false);
+		//	}
+		//	else
+		//	{
+		//		// Because that LimitBox::fromBounds sets the node name to "Default",
+		//		// restore its name after the fromBounds call.
+		//		limBox->setNodeName(limBoxName);
+		//	}
+		//}
 
 
 		mIsProjectDirty = true;
@@ -378,15 +398,11 @@ namespace ambergris {
 
 	bool AgPointCloudProject::unloadProject()
 	{
-		for (auto& s : m_scanList)
-		{
-			delete s;
-		}
-		m_scanList.clear();
+		destroy();
 
 		//Do not delete the render target, just de-alloc it's members
-		if (mOccluderTargetPtr)
-			mOccluderTargetPtr->Clear();
+		/*if (mOccluderTargetPtr)
+			mOccluderTargetPtr->Clear();*/
 
 		m_geoReference[0] = 0.0;
 		m_geoReference[1] = 0.0;
@@ -395,25 +411,25 @@ namespace ambergris {
 		m_projectBounds.clear();
 
 		// Nuke all the transformed filters that we have created for each scan.
-		for (FilterMap::iterator iFilter = m_filters.begin(); iFilter != m_filters.end(); ++iFilter)
+		/*for (FilterMap::iterator iFilter = m_filters.begin(); iFilter != m_filters.end(); ++iFilter)
 		{
 			for (size_t iScan = 0; iScan != iFilter->second.size(); ++iScan)
 			{
 				delete iFilter->second[iScan];
 			}
 			iFilter->second.clear();
-		}
+		}*/
 
 		mCoordinateSystemHasChanged = false;
 		mIsProjectDirty = false;
 
 		// set project unit to meter
-		RCUnitService::setUnitType(UnitType::UTMeter);
+		/*RCUnitService::setUnitType(UnitType::UTMeter);
 
 		clearDebugBounds();
 		clearDebugPoints();
 		clearDebugTriangles();
-		clearDebugQuads();
+		clearDebugQuads();*/
 
 		return true;
 	}
@@ -423,7 +439,9 @@ namespace ambergris {
 	{
 		const double curTime = RealityComputing::Utility::Time::getTimeSinceEpochinMilliSec();
 		int treeIndex = scan;
-		AgVoxelTreeRunTime* curTreePtr = m_scanList[treeIndex];
+		AgVoxelTreeRunTime* curTreePtr = get(treeIndex);
+		if (!curTreePtr || AgVoxelTreeRunTime::kInvalidHandle == curTreePtr->m_handle)
+			return;
 
 		// Allocate an element into the list that will become the next working element.
 		voxelContainerListOut.reserve(voxelContainerListOut.size() + curTreePtr->getAmountOfVoxelContainers() + 1);
@@ -508,7 +526,10 @@ namespace ambergris {
 		for (size_t i = 0; i < visibleScanList.size(); i++)
 		{
 			int treeIndex = visibleScanList[i].m_scanId;
-			AgVoxelTreeRunTime* curTreePtr = m_scanList[treeIndex];
+			const AgVoxelTreeRunTime* curTreePtr = get(treeIndex);
+			if (!curTreePtr || AgVoxelTreeRunTime::kInvalidHandle == curTreePtr->m_handle)
+				continue;
+
 			potentialVisiblenodes += curTreePtr->getAmountOfVoxelContainers();
 		}
 		//reserve already space, for huge point clouds with many nodes, this reduces culling
@@ -539,13 +560,13 @@ namespace ambergris {
 		return int(voxelContainerListOut.size());
 	}
 
-	int AgPointCloudProject::_DoPerformFrustumCulling(std::vector<PointCloudInformation> &visibleTreeListOut)
+	int AgPointCloudProject::_DoPerformFrustumCulling(std::vector<PointCloudInformation> &visibleTreeListOut) const
 	{
 		std::vector< LodRecord > lodRecs;
 
-		for (size_t i = 0; i < m_scanList.size(); i++)
+		for (uint16_t i = 0; i < getSize(); i++)
 		{
-			AgVoxelTreeRunTime *curTreePtr = m_scanList[i];
+			const AgVoxelTreeRunTime *curTreePtr = get(i);
 			if (!curTreePtr->m_isVisible)
 				continue;
 
