@@ -75,7 +75,7 @@ namespace ambergris {
 		if (!bound)
 			return false;
 
-		const AgVoxelTreeRunTime* voxelTree = Singleton<AgSceneDatabase>::instance().m_pointCloudManager.getPointCloudProject().get(voxelTreeHandle);
+		const AgVoxelTreeRunTime* voxelTree = Singleton<AgSceneDatabase>::instance().getPointCloudProject().get(voxelTreeHandle);
 		if (!voxelTree)
 			return false;
 

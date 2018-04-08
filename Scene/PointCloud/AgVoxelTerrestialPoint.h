@@ -30,8 +30,6 @@ VoxelTerrestialPoint ( 32*3 bits total )
 
 namespace ambergris {
 
-	class VoxelContainer;
-
 	struct AgVoxelTerrestialPoint
 	{
 		AgVoxelTerrestialPoint();

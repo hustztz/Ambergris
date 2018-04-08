@@ -619,7 +619,7 @@ namespace ambergris {
 			//setMirrorBallTextureFilePath(mirrorBallTexFile);
 
 			//if not light weight project load other data
-			if (!Singleton<AgSceneDatabase>::instance().m_pointCloudManager.getLightWeight())
+			if (!Singleton<AgSceneDatabase>::instance().getPointCloudProject().getLightWeight())
 			{
 				try
 				{
@@ -978,7 +978,7 @@ namespace ambergris {
 
 		std::wstring fileName = treeNode.path;
 		std::wstring existFileName = L"";
-		if (Filesystem::findFirstExisting(existFileName, fileName, Singleton<AgSceneDatabase>::instance().m_pointCloudManager.getSearchPaths()))
+		if (Filesystem::findFirstExisting(existFileName, fileName, Singleton<AgSceneDatabase>::instance().getSearchPaths()))
 		{
 			m_fileName = existFileName;
 

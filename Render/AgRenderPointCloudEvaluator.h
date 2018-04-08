@@ -9,6 +9,6 @@ namespace ambergris {
 		AgRenderPointCloudEvaluator() : AgRenderEvaluator() {}
 		virtual ~AgRenderPointCloudEvaluator() {}
 
-		virtual bool evaluate(AgRenderer& renderer, const AgObject* pObject) override;
+		virtual bool evaluate(AgRenderer& renderer, AgDrawInfo drawInfo) override;
 	};
 }

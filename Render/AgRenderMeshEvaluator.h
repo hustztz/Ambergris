@@ -15,7 +15,7 @@ namespace ambergris {
 			: AgRenderEvaluator()	{}
 		~AgRenderMeshEvaluator() {}
 
-		virtual bool evaluate(AgRenderer& renderer, const AgObject* pObject) override;
+		virtual bool evaluate(AgRenderer& renderer, AgDrawInfo drawInfo) override;
 
 	protected:
 		template<typename T>
@@ -25,12 +25,12 @@ namespace ambergris {
 				return false;
 
 			const AgGeometry* pGeometry = Singleton<AgRenderResourceManager>::instance().m_geometries.get(geom);
-			if (!pGeometry)
+			if (!pGeometry || AgGeometry::kInvalidHandle == pGeometry->m_handle)
 				return false;
 
 			const AgVertexBuffer* vb = Singleton<AgRenderResourceManager>::instance().m_vertex_buffer_pool.get(pGeometry->vertex_buffer_handle);
 			const AgIndexBuffer* ib = Singleton<AgRenderResourceManager>::instance().m_index_buffer_pool.get(pGeometry->index_buffer_handle);
-			if (!vb || !ib)
+			if (!vb || AgVertexBuffer::kInvalidHandle == vb->m_handle || !ib || AgIndexBuffer::kInvalidHandle == ib->m_handle)
 				return false;
 
 			std::shared_ptr<T> renderNode(BX_NEW(entry::getAllocator(), T));

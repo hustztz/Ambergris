@@ -161,7 +161,7 @@ void AgPointCloudRequests::doTask()
 	RCScopedLock<RCMutex> lock(*mRequestSetMutex);
 
 	//free cache once
-	AgPointCloudProject& pointCloud = Singleton<AgSceneDatabase>::instance().m_pointCloudManager.getPointCloudProject();
+	AgPointCloudProject& pointCloud = Singleton<AgSceneDatabase>::instance().getPointCloudProject();
 	pointCloud.freeLRUCache();
 	if (mSortNodes) //sort nodes based on their LOD?
 	{

@@ -15,7 +15,7 @@ namespace ambergris {
 		AgRenderEvaluator() {}
 		virtual ~AgRenderEvaluator() {}
 
-		virtual bool evaluate(AgRenderer& renderer, const AgObject* pObject) = 0;
+		virtual bool evaluate(AgRenderer& renderer, AgDrawInfo drawInfo) = 0;
 	};
 
 	bool AgRenderSceneBridge();

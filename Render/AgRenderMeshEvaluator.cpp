@@ -2,17 +2,24 @@
 #include "AgRenderInstanceNode.h"
 #include "AgRenderSceneBridge.h"
 #include "AgRenderer.h"
+#include "Scene/AgSceneDatabase.h"
 
 #include <memory>
 
 namespace ambergris {
 
 	/*virtual*/
-	bool AgRenderMeshEvaluator::evaluate(AgRenderer& renderer, const AgObject* pObject)
+	bool AgRenderMeshEvaluator::evaluate(AgRenderer& renderer, AgDrawInfo drawInfo)
 	{
+		AgObject* pObject = Singleton<AgSceneDatabase>::instance().m_objectManager.get(drawInfo.mObject);
+		if (!pObject || AgObject::kInvalidHandle == pObject->m_handle || !pObject->m_dirty)
+			return false;
+
 		const AgMesh* mesh = dynamic_cast<const AgMesh*>(pObject);
 		if (!mesh)
 			return false;
+
+		pObject->m_dirty = false;
 
 		bool ret = true;
 		bool instanceSupport = 0 != (bgfx::getCaps()->supported & BGFX_CAPS_INSTANCING);

@@ -38,4 +38,23 @@ namespace ambergris {
 
 		std::atomic<bool>		m_dirty;
 	};
+
+	struct AgDrawInfo
+	{
+		AgObject::Handle				mObject;
+		int				                mContainerId;
+		int                             mAmountPoints;
+		int                             mLod;
+
+#ifdef _WIN32
+		AgDrawInfo(AgObject::Handle tree, int id, int amt, int lod)
+			: mObject(tree)
+			, mContainerId(id)
+			, mAmountPoints(amt)
+			, mLod(lod)
+		{}
+#endif
+	};
+
+
 }

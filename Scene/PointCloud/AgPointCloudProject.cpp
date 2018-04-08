@@ -90,7 +90,7 @@ namespace ambergris {
 		return true;
 	}
 
-	static inline LodRecord getLOD(const ScanContainerID& container, int viewIndex)
+	static inline LodRecord getLOD(const ScanContainerID& container, AgCameraView::Handle viewIndex)
 	{
 		if (static_cast<int>(container.m_LODs.size()) > viewIndex)
 			return container.m_LODs[viewIndex];
@@ -126,6 +126,7 @@ namespace ambergris {
 	AgPointCloudProject::AgPointCloudProject()
 		: mMaxPointsLoad(75)
 		, mLightWeight(false)
+		, mIgnoreClip(false)
 		, mIsProjectDirty(false)
 		, mCoordinateSystemHasChanged(false)
 		, m_maxAllocatedMemory(1200 * 1024 * 1024)
@@ -723,7 +724,6 @@ namespace ambergris {
 		std::vector<AgVoxelContainer*> allCointainerList;
 		if (currentMemUsage > m_maxAllocatedMemory)
 		{
-			std::vector<VoxelContainer*> allPointList;
 			for (uint16_t i = 0; i <getSize(); i++)
 			{
 				AgVoxelTreeRunTime *curTreePtr = get(i);
@@ -913,5 +913,30 @@ namespace ambergris {
 		DeletePtr(curMemMap);
 
 		return float(nodesCompleted) / float(visibleLeafNodes.size());
+	}
+
+	void AgPointCloudProject::evaluate(std::vector<AgDrawInfo>& pointList, AgCameraView::Handle viewId, const std::vector<ScanContainerID>& visibleLeafNodes)
+	{
+		pointList.clear();
+		pointList.reserve(visibleLeafNodes.size());
+
+		std::uint32_t pointsDrawn = 0;
+		for (const auto& curInfo : visibleLeafNodes)
+		{
+			const auto& lodRec = getLOD(curInfo, viewId);
+			const int amountOfPoints = lodRec.m_pointCount;
+			AgVoxelTreeRunTime *curTreePtr = get(curInfo.m_scanId);
+			if(!curTreePtr || AgVoxelTreeRunTime::kInvalidHandle == curTreePtr->m_handle)
+				continue;
+
+			AgVoxelContainer* pContainer = curTreePtr->getVoxelContainerAt(curInfo.m_containerId);
+			if(!pContainer)
+				continue;
+
+			int currentLod = std::min(static_cast<int>(lodRec.m_LOD), pContainer->m_maximumLOD);
+
+			pointList.push_back(AgDrawInfo(curTreePtr->m_handle, curInfo.m_containerId, amountOfPoints, currentLod));
+			pointsDrawn += amountOfPoints;
+		}
 	}
 }

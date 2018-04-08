@@ -6,6 +6,7 @@
 #include "AgEngineSpatialFilter.h"
 
 #include "Resource/AgBoundingbox.h"
+#include "Resource/AgGeometry.h"
 
 #include <utility/RCMutex.h>
 
@@ -57,6 +58,8 @@ namespace ambergris {
 	public:
 
 		AgVoxelContainer(AgVoxelTreeRunTime* parentTreePtr);
+
+		AgGeometry::Handle getGeometry() const { return m_geometry;	}
 
 		//////////////////////////////////////////////////////////////////////////
 		// \brief: load a LIDAR LOD from disk this is a
@@ -211,7 +214,7 @@ namespace ambergris {
 																		//TODO: we shall check if we are allowed to change the stack sequence of class members
 																		//      and stack public/private member together.
 	private:
-		AgResource::Handle              m_parentTreeHandle;
+		AgResource::Handle              m_parentTreeHandle;//TODO:delete
 		double                                  m_nodeRadius;                   //radius of this container in meters
 	public:
 		//TODO make private
@@ -296,5 +299,7 @@ namespace ambergris {
 		unsigned short                          m_regionFlag;
 
 		bool mHasPersistentDeletedPts;
+
+		AgGeometry::Handle						m_geometry;
 	};
 }

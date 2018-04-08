@@ -1,6 +1,7 @@
 #include "AgRenderMeshBatchEvaluator.h"
 #include "AgRenderSceneBridge.h"
 #include "AgRenderer.h"
+#include "Scene/AgSceneDatabase.h"
 
 namespace ambergris {
 
@@ -22,17 +23,23 @@ namespace ambergris {
 	}
 
 	/*virtual*/
-	bool AgRenderMeshBatchEvaluator::evaluate(AgRenderer& renderer, const AgObject* pObject)
+	bool AgRenderMeshBatchEvaluator::evaluate(AgRenderer& renderer, AgDrawInfo drawInfo)
 	{
+		AgObject* pObject = Singleton<AgSceneDatabase>::instance().m_objectManager.get(drawInfo.mObject);
+		if (!pObject || AgObject::kInvalidHandle == pObject->m_handle || !pObject->m_dirty)
+			return false;
+
 		const AgMesh* mesh = dynamic_cast<const AgMesh*>(pObject);
 		if (!mesh)
 			return false;
+
+		pObject->m_dirty = false;
 
 		bool ret = true;
 		bool instanceSupport = 0 != (bgfx::getCaps()->supported & BGFX_CAPS_INSTANCING);
 		if (instanceSupport && mesh->m_inst_handle >= 0)
 		{
-			ret &= AgRenderMeshEvaluator::evaluate(renderer, pObject);
+			ret &= AgRenderMeshEvaluator::evaluate(renderer, drawInfo);
 		}
 		else
 		{

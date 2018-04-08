@@ -23,8 +23,6 @@ VoxelLidarPoint ( 32*3 bits total )
 
 namespace ambergris {
 
-	class VoxelContainer;
-
 	struct AgVoxelLidarPoint
 	{
 		AgVoxelLidarPoint();

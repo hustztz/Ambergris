@@ -32,6 +32,7 @@ namespace ambergris {
 		const AgRenderNode* appendNode(std::shared_ptr<AgRenderNode> renderNode, AgGeometry::Handle geom);
 		const RenderHandle& getRenderHandle(AgGeometry::Handle geom) const;
 		const AgRenderNode* getRenderNode(AgGeometry::Handle geom) const;
+		AgCameraView::Handle getActiveView() const { return m_activeView; }
 
 		void updatePickingInfo(float mouseXNDC, float mouseYNDC);
 		void enableOcclusionQuery(int32_t threshold);

@@ -65,6 +65,8 @@ namespace ambergris {
 
 	public:
 		AgPointCloudProject();
+
+		void evaluate(std::vector<AgDrawInfo>& pointList, AgCameraView::Handle viewId, const std::vector<ScanContainerID>& visibleLeafNodes);
 		//////////////////////////////////////////////////////////////////////////
 		//\brief: Do first a frustum cull with the scans's bounding box,
 		//        after that determine the LOD's for each of the voxel containers
@@ -168,6 +170,9 @@ namespace ambergris {
 		void                        setLightWeight(bool val) { mLightWeight = val; }
 		bool                        getLightWeight() const { return mLightWeight; }
 
+		void                        setIgnoreClip(bool val) { mIgnoreClip = val; }
+		bool                        getIgnoreClip() const { return mIgnoreClip; }
+
 	protected:
 		//////////////////////////////////////////////////////////////////////////
 		// \brief: Perform frustum culling to determine the visible tree's,
@@ -193,6 +198,7 @@ namespace ambergris {
 	private:
 		POINTCLOUD_CULL_METHOD              mCullMethod;
 		bool								mLightWeight;
+		bool								mIgnoreClip;
 
 		bool                                mCoordinateSystemHasChanged;
 

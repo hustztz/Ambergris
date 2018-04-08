@@ -36,7 +36,8 @@ namespace ambergris {
 		mInternalClipFlag(NON_CLIPPED),
 		m_nClipIndex(0),
 		m_regionFlag(0),
-		mHasPersistentDeletedPts(false)
+		mHasPersistentDeletedPts(false),
+		m_geometry(AgGeometry::kInvalidHandle)
 	{
 		//setRegionIndex(alPointSelect::UNASSIGNED);
 		setIsInTempSelection(false);
@@ -181,7 +182,7 @@ namespace ambergris {
 			m_currentLODLoaded = newLOD;
 			m_currentDrawLOD = newLOD;
 
-			if (!Singleton<AgSceneDatabase>::instance().m_pointCloudManager.getLightWeight())
+			if (!Singleton<AgSceneDatabase>::instance().getPointCloudProject().getLightWeight())
 			{
 
 				//RCTimer regionTimer;
@@ -190,7 +191,7 @@ namespace ambergris {
 
 				updateLayerEffectWhenRefinePoints(oldPoints);
 
-				if (!Singleton<AgSceneDatabase>::instance().m_pointCloudManager.getIgnoreClip())
+				if (!Singleton<AgSceneDatabase>::instance().getPointCloudProject().getIgnoreClip())
 					updateClipEffectWhenRefinePoints(oldPoints);
 
 				//if (RCRegionConfig::isTimeLogEnabled())
@@ -692,11 +693,11 @@ namespace ambergris {
 			m_currentLODLoaded = lodLevel;
 			m_currentDrawLOD = lodLevel;
 
-			if (!Singleton<AgSceneDatabase>::instance().m_pointCloudManager.getLightWeight())
+			if (!Singleton<AgSceneDatabase>::instance().getPointCloudProject().getLightWeight())
 			{
 				updateLayerEffectWhenRefinePoints(oldPoints);
 
-				if (!Singleton<AgSceneDatabase>::instance().m_pointCloudManager.getIgnoreClip())
+				if (!Singleton<AgSceneDatabase>::instance().getPointCloudProject().getIgnoreClip())
 					updateClipEffectWhenRefinePoints(oldPoints);
 			}
 		}
