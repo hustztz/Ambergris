@@ -84,14 +84,64 @@ namespace ambergris {
 		int                reducePointCloudLoad(std::uint32_t amountOfPointsVisible, AgCameraView::Handle view, std::vector<ScanContainerID>& voxelContainerListOut);
 
 		//////////////////////////////////////////////////////////////////////////
+		//\brief: Free's memory, returns the amount of memory freed
+		//////////////////////////////////////////////////////////////////////////
+		std::uint64_t                           freeLRUCache();
+
+		//////////////////////////////////////////////////////////////////////////
+		//\ brief: Streams in new voxels from disk, will return the proportion of
+		//              voxels that are completely loaded.
+		//////////////////////////////////////////////////////////////////////////
+		float                                   refineVoxels(std::vector<ScanContainerID>& visibleLeafNodes,
+			int timeOutInMS = -1,
+			const bool& interupted = false,
+			std::vector<bool>* updatedViewports = NULL);
+
+		//////////////////////////////////////////////////////////////////////////
+		// \brief: Returns the allocated memory of this project file
+		//////////////////////////////////////////////////////////////////////////
+		std::uint64_t                   getAllocatedMemory() const;
+
+		//////////////////////////////////////////////////////////////////////////
 		// \brief: Adds a new scan to this project
 		//////////////////////////////////////////////////////////////////////////
 		bool				addScan(std::shared_ptr<AgVoxelTreeRunTime> treePtr);
 
 		//////////////////////////////////////////////////////////////////////////
+		// \brief: remove scan file by id
+		//////////////////////////////////////////////////////////////////////////
+		bool                                    removeScan(std::wstring fileId);
+
+		//////////////////////////////////////////////////////////////////////////
 		// \brief: Unloads a project
 		//////////////////////////////////////////////////////////////////////////
 		bool                 unloadProject();
+
+		//////////////////////////////////////////////////////////////////////////
+		// \brief: set whether the project is dirty or not, any operation changes
+		//         rcp file need to call this method
+		//////////////////////////////////////////////////////////////////////////
+		void                                   setIsProjectDirty(bool dirty) { mIsProjectDirty = dirty; }
+
+		//////////////////////////////////////////////////////////////////////////
+		// \brief: get whether the project is dirty or not
+		//////////////////////////////////////////////////////////////////////////
+		bool                                   getIsProjectDirty() { return mIsProjectDirty; }
+
+		//////////////////////////////////////////////////////////////////////////
+		// \brief: Returns bounding box around all scans (visible & hidden) in the project
+		//////////////////////////////////////////////////////////////////////////
+		const RealityComputing::Common::RCBox& getFullBoundingBox() const {	return m_projectBounds;	}
+
+		//////////////////////////////////////////////////////////////////////////
+		//\brief: Sets the global offset( georeference )
+		//////////////////////////////////////////////////////////////////////////
+		void                                    setGeoReference(const RealityComputing::Common::RCVector3d& offset);
+
+		//////////////////////////////////////////////////////////////////////////
+		//\brief: returns the global offset( georeference )
+		//////////////////////////////////////////////////////////////////////////
+		const RealityComputing::Common::RCVector3d&               getGeoReference() const {	return m_geoReference;	}
 
 		//////////////////////////////////////////////////////////////////////////
 		// \brief: if all scans have the same coordinate system string, return it, otherwise return an empty string
@@ -148,6 +198,9 @@ namespace ambergris {
 
 		//Maximum amount of points to be streamed in/ display at any given time, in millions
 		std::uint32_t                       mMaxPointsLoad;
+
+		std::uint64_t                       m_maxAllocatedMemory;       //default is 1024MB
+		std::uint64_t                       m_lruFreeMemory;            //default is 256MB
 
 		RealityComputing::Common::RCVector3d		m_geoReference;
 		RealityComputing::Common::RCTransform         mToGlobalFromWorld;

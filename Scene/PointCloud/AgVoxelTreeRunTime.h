@@ -146,6 +146,11 @@ namespace ambergris {
 		RealityComputing::Common::RCVector3d	getFinalTranslation() const;
 
 		//////////////////////////////////////////////////////////////////////////
+		// \brief: Returns the allocated memory of this scan,
+		//////////////////////////////////////////////////////////////////////////
+		std::uint64_t                           getAllocatedMemory() const;
+
+		//////////////////////////////////////////////////////////////////////////
 		// \brief: Returns if this scan has time stamp information 
 		//////////////////////////////////////////////////////////////////////////
 		bool                                    hasTimeStamp() const;
@@ -154,10 +159,6 @@ namespace ambergris {
 		// \brief: Sets if this scan will use the transform from RCS headers
 		//////////////////////////////////////////////////////////////////////////
 		void                                    setUseFileHeaderTransform(bool val) { m_useFileHeaderTransform = val; }
-		//////////////////////////////////////////////////////////////////////////
-		//\brief: Sets the search paths
-		//////////////////////////////////////////////////////////////////////////
-		void                                    setSearchPaths(const std::vector<std::wstring>& searchPaths) { mSearchPaths = searchPaths; }
 
 		void                                  setProjectDirectory(const std::wstring& projectDir);
 
@@ -191,7 +192,7 @@ namespace ambergris {
 		//      returns rsLegacyFileFormat if there are legacy files,
 		//      returns rsfilecorrupt if the file is corrupt
 		//////////////////////////////////////////////////////////////////////////
-		RealityComputing::Common::RCCode loadFromMedium(const std::wstring& projectFile, const std::wstring& fileName, bool isLightWeight);
+		RealityComputing::Common::RCCode loadFromMedium(const std::wstring& projectFile, const std::wstring& fileName);
 		//////////////////////////////////////////////////////////////////////////
 		// \brief: Parse Segment Data
 		//////////////////////////////////////////////////////////////////////////
@@ -217,7 +218,16 @@ namespace ambergris {
 		//////////////////////////////////////////////////////////////////////////
 		bool                                    parseVoxelData(const std::wstring& fileName);
 		/// override method, for reattach scans
-		bool				onLoad(const std::wstring& projectFile, const AgVoxelTreeNode& treeNode, bool isLightWeight);
+		bool				onLoad(const std::wstring& projectFile, const AgVoxelTreeNode& treeNode);
+
+		/// check file format, return rcOK if the file format is latest, return rsLegacyFileFormat if the file format is out of date,
+		/// returns rsUnknownFileFormat if the file is not a valid K2 file, returns rsDeprecatedFileFormat if the file format is too old to support
+		RealityComputing::Common::RCCode checkFileFormat(const std::wstring& fileName) const;
+
+		//////////////////////////////////////////////////////////////////////////
+		// \brief: Returns if this scan has intensity
+		//////////////////////////////////////////////////////////////////////////
+		bool                                    hasIntensity() const {	return mHasIntensity;	}
 	protected:
 		/// internal use only, check if the file format is legacy
 		bool                                    _IsLegacyFileFormat(std::uint32_t majorVersion, std::uint32_t minorVersion) const;
@@ -230,7 +240,6 @@ namespace ambergris {
 		std::wstring                            mProjectDirectory;
 		std::wstring                            mId;                //unique id
 		bool                                    m_useFileHeaderTransform;
-		std::vector<std::wstring>               mSearchPaths;
 
 		std::vector<OctreeFileChunk>			m_chunkList;
 		int                                     m_octreeFlags;

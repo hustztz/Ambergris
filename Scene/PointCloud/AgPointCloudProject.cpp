@@ -3,12 +3,16 @@
 #include "AgRegionVisibility.h"
 #include "Resource/AgRenderResourceManager.h"
 
+#include <common/RCMemoryHelper.h>
+#include <common/RCMemoryMapFile.h>
 #include <utility/RCTimer.h>
 #include <utility/RCStringUtils.h>
 #include <algorithm>
+#include <assert.h>
 
 using namespace ambergris::RealityComputing::Common;
 using namespace ambergris::RealityComputing::Utility::String;
+using namespace ambergris::RealityComputing::Utility::Threading;
 
 namespace ambergris {
 
@@ -39,8 +43,8 @@ namespace ambergris {
 		if (!nodeBbox)
 			return false;
 
-		const double svoBoundExtent = (double)svoBbox->getRadius();
-		const double nodeBoundExtent = (double)nodeBbox->getRadius();
+		const double svoBoundExtent = svoBbox->m_bounds.getMax().distance(svoBbox->m_bounds.getMin());
+		const double nodeBoundExtent = nodeBbox->m_bounds.getMax().distance(nodeBbox->m_bounds.getMin());
 		if (svoBoundExtent < RealityComputing::Common::Math::Constants::epsilon)
 			return false;
 
@@ -66,11 +70,11 @@ namespace ambergris {
 			const uint8_t refineLevel = static_cast<uint8_t>(std::log(ratio) * log2e *-1.0);
 
 			//use node bound to compute LOD and then increase by refineLevel to estimate level w.r.t svoBound
-			double radius = (double)svoBbox->getRadius() * 0.5;
+			double radius = svoBoundExtent * 0.5;
 
 			//in case of there is only one point inside the voxel, the radius will be zero
 			if (radius < Math::Constants::epsilon)
-				svoBbox->expand((float)(radius - Math::Constants::epsilon));
+				svoBbox->m_bounds.expand((float)(radius - Math::Constants::epsilon));
 
 			if (calcLODs(voxel.m_svoBounds, voxel.getParentTreeHandle(), lodsOut) == false)
 				return false;
@@ -93,11 +97,39 @@ namespace ambergris {
 		return LodRecord();
 	}
 
+	static std::uint8_t findMaxLod(const std::vector< LodRecord >& lods)
+	{
+		std::uint8_t maxLod = 0;
+		for (size_t i = 0; i != lods.size(); ++i)
+		{
+			const std::uint8_t lod = lods[i].m_LOD;
+			if (lod > maxLod)
+				maxLod = lod;
+		}
+		return maxLod;
+	}
+
+	//////////////////////////////////////////////////////////////////////////
+	// \brief: Sort voxels based on their least recently used value
+	//////////////////////////////////////////////////////////////////////////
+	class VoxelTreeSorterLRU
+	{
+	public:
+		VoxelTreeSorterLRU() {}
+
+		bool operator() (const AgVoxelContainer* p1, const AgVoxelContainer* p2) const
+		{
+			return (p1->m_lastTimeModified < p2->m_lastTimeModified);
+		}
+	};
+
 	AgPointCloudProject::AgPointCloudProject()
 		: mMaxPointsLoad(75)
 		, mLightWeight(false)
 		, mIsProjectDirty(false)
 		, mCoordinateSystemHasChanged(false)
+		, m_maxAllocatedMemory(1200 * 1024 * 1024)
+		, m_lruFreeMemory(400)
 	{
 		m_geoReference[0] = m_geoReference[1] = m_geoReference[2] = 0.0;
 	}
@@ -396,6 +428,35 @@ namespace ambergris {
 		return true;
 	}
 
+	bool AgPointCloudProject::removeScan(std::wstring fileId)
+	{
+		// find the scan by id and remove it
+		bool found = false;
+		for (uint16_t i = 0; i < getSize(); i++)
+		{
+			AgVoxelTreeRunTime* tree = get(i);
+			if(!tree || AgVoxelTreeRunTime::kInvalidHandle == tree->m_handle)
+				continue;
+			if (tree->getId() == fileId)
+			{
+				found = true;
+				erase(tree->m_handle);
+				break;
+			}
+		}
+
+		if (!found)
+		{
+			return false;
+		}
+
+		updateProjectBounds();
+
+		mIsProjectDirty = true;
+
+		return true;
+	}
+
 	bool AgPointCloudProject::unloadProject()
 	{
 		destroy();
@@ -617,5 +678,240 @@ namespace ambergris {
 				}*/
 			}
 		}
+	}
+
+	void AgPointCloudProject::setGeoReference(const RCVector3d& offset)
+	{
+		m_geoReference = offset;
+
+		for (uint16_t i = 0; i < getSize(); i++)
+		{
+			AgVoxelTreeRunTime* curTreePtr = get(i);
+			if(!curTreePtr || AgVoxelTreeRunTime::kInvalidHandle == curTreePtr->m_handle)
+				continue;
+			curTreePtr->setGeoReference(offset);
+			AgCacheTransform* transform = Singleton<AgRenderResourceManager>::instance().m_transforms.get(curTreePtr->m_global_transform_h);
+			if (transform && AgCacheTransform::kInvalidHandle != transform->m_handle)
+			{
+				transform->m_transform.setTranslation(curTreePtr->getOriginalTranslation() - offset);
+			}
+			curTreePtr->updateAll();
+		}
+		updateProjectBounds();
+		//updateSpatialFilters();
+	}
+
+	std::uint64_t AgPointCloudProject::getAllocatedMemory() const
+	{
+		std::uint64_t totalMemory = 0;
+		for (uint16_t i = 0; i < getSize(); i++)
+		{
+			const AgVoxelTreeRunTime* curTreePtr = get(i);
+			if (!curTreePtr || AgVoxelTreeRunTime::kInvalidHandle == curTreePtr->m_handle)
+				continue;
+			totalMemory += curTreePtr->getAllocatedMemory();
+		}
+		return totalMemory;
+	}
+
+	std::uint64_t AgPointCloudProject::freeLRUCache()
+	{
+		std::uint64_t currentMemUsage = getAllocatedMemory();
+		if (currentMemUsage < m_maxAllocatedMemory)
+			return 0ULL;
+
+		std::vector<AgVoxelContainer*> allCointainerList;
+		if (currentMemUsage > m_maxAllocatedMemory)
+		{
+			std::vector<VoxelContainer*> allPointList;
+			for (uint16_t i = 0; i <getSize(); i++)
+			{
+				AgVoxelTreeRunTime *curTreePtr = get(i);
+				for (int j = 0; j < curTreePtr->getAmountOfVoxelContainers(); j++)
+				{
+					AgVoxelContainer *curContainerPtr = curTreePtr->getVoxelContainerAt(j);
+					if (curContainerPtr->m_lidarPointList.size())
+					{
+						allCointainerList.push_back(curContainerPtr);
+					}
+					else if (curContainerPtr->m_terrestialPointList.size())
+					{
+						allCointainerList.push_back(curContainerPtr);
+					}
+				}
+			}
+		}
+
+		std::uint64_t memCleared = 0ULL;
+		std::uint64_t memFreeInBytes = m_lruFreeMemory * 1024 * 1024;//currentMemUsage - m_maxAllocatedMemory;
+
+																	 //sort the containers LRU
+		std::sort(allCointainerList.begin(), allCointainerList.end(), VoxelTreeSorterLRU());
+		for (size_t i = 0; i < allCointainerList.size(); i++)
+		{
+			AgVoxelContainer *curContainerPtr = allCointainerList[i];
+			RCScopedLock<RCMutex> locker(*(curContainerPtr->m_loadMutexPtr));
+			if (curContainerPtr->m_lidarPointList.size())
+			{
+				memCleared += sizeof(AgVoxelLidarPoint) * curContainerPtr->m_lidarPointList.size();
+				ClearVector(curContainerPtr->m_lidarPointList);
+				curContainerPtr->setClipIndex(0);
+			}
+			else if (curContainerPtr->m_terrestialPointList.size())
+			{
+				memCleared += sizeof(AgVoxelTerrestialPoint) * curContainerPtr->m_terrestialPointList.capacity();
+				ClearVector(curContainerPtr->m_terrestialPointList);
+				curContainerPtr->setClipIndex(0);
+			}
+			if (curContainerPtr->m_terrestialSegIdList.size()) {
+				memCleared += sizeof(std::uint16_t) * curContainerPtr->m_terrestialSegIdList.capacity();
+				ClearVector(curContainerPtr->m_terrestialSegIdList);
+			}
+
+			curContainerPtr->m_currentDrawLOD = -1;
+			curContainerPtr->m_currentLODLoaded = -1;
+
+			//done
+			if (memCleared >= memFreeInBytes)
+				break;
+
+		}
+		return memCleared;
+	}
+
+	float AgPointCloudProject::refineVoxels(std::vector<ScanContainerID>& visibleLeafNodes, int timeOutInMS, const bool& interupted, std::vector<bool>* updatedViewports)
+	{
+		if (visibleLeafNodes.empty())
+		{
+			return 1.0f;
+		}
+
+		/*if (m_worldPtr->getCanDrawWorld() == false)
+			return 1.0f;*/
+
+		//stream in from disk
+		double startTime = RealityComputing::Utility::Time::getTimeSinceEpochinMilliSec();
+		RCMemoryMapFile        *curMemMap = NULL;
+		AgVoxelTreeRunTime       *curVoxelTree = NULL;
+
+		// TODO: Actually determine which views have changed.
+		// For now, just mark them all as changed.
+		if (updatedViewports != NULL)
+			updatedViewports->assign(Singleton<AgRenderResourceManager>::instance().m_views.getValidSize(), false);
+
+		size_t nodesCompleted;
+		for (nodesCompleted = 0; nodesCompleted < visibleLeafNodes.size(); nodesCompleted++)
+		{
+			if (interupted)
+			{
+				DeletePtr(curMemMap);
+				return false;
+			}
+
+			/*if (m_worldPtr->getCanDrawWorld() == false)
+				break;*/
+
+			ScanContainerID& curInfo = visibleLeafNodes[nodesCompleted];
+			int treeIndex = curInfo.m_scanId;
+
+			int containerIndex = curInfo.m_containerId;
+			int wantedLOD = findMaxLod(curInfo.m_LODs);
+
+			AgVoxelTreeRunTime *curTreePtr = get(treeIndex);
+			AgVoxelContainer*   curContainerPtr = curTreePtr->getVoxelContainerAt(containerIndex);
+
+			//already loaded
+			if (wantedLOD <= curContainerPtr->m_currentLODLoaded)
+			{
+				for (size_t iLod = 0; iLod != curInfo.m_LODs.size(); ++iLod)
+				{
+					auto& lodRec = curInfo.m_LODs[iLod];
+					int lod = (wantedLOD <= lodRec.m_LOD) ? wantedLOD : lodRec.m_LOD;
+					lodRec.m_pointCount = curContainerPtr->m_amountOfLODPoints[lod];
+				}
+				continue;
+			}
+
+			//new tree encountered
+			int oldLod = curContainerPtr->m_currentLODLoaded;
+			if (curVoxelTree != curTreePtr)
+			{
+				DeletePtr(curMemMap);
+				curVoxelTree = curTreePtr;
+				curMemMap = new RCMemoryMapFile(curTreePtr->getFileName().c_str());
+
+				if (!curMemMap->createFileHandleOnlyRead())
+				{
+					assert("PointCloudProject::refineVoxels() Invalid File Handle!");
+				}
+			}
+
+			//for each view, set update to 'true' if the voxel is currently not complete, and this needs updating.
+			if (updatedViewports != NULL)
+			{
+				updatedViewports->resize(Singleton<AgRenderResourceManager>::instance().m_views.getValidSize(), false); // the number of views may have changed since the last loop.
+				for (size_t j = 0; j < updatedViewports->size(); ++j)
+				{
+					const std::uint8_t lod = j < curInfo.m_LODs.size() ? curInfo.m_LODs[j].m_LOD : 0;
+
+					// Mark the viewport as needing updating if its desired LOD was greater than the old loaded LOD
+					// (we assume that the newly loaded LOD is at least as big as the desired one, or else wantedLOD above will be wrong)
+					if (lod > oldLod)
+					{
+						(*updatedViewports)[j] = true;  //mark as need upate
+					}
+				}
+			}
+
+			/*if (m_worldPtr->getCanDrawWorld() == false)
+				break;*/
+			//acquire lock
+
+			//curContainerPtr->m_loadMutexPtr->lock();
+			if (curTreePtr->isLidarData())
+				curContainerPtr->loadLidarLODInternal(wantedLOD, curMemMap, true);
+			else
+				curContainerPtr->loadTerrestialLODInternal(wantedLOD, curMemMap, true);
+
+			/*if (m_worldPtr->getCanDrawWorld() == false)
+				break;*/
+
+			//update amount of points
+			int amountOfPoints = curContainerPtr->m_amountOfLODPoints[wantedLOD];
+			if (amountOfPoints)
+			{
+				for (size_t iLod = 0; iLod != curInfo.m_LODs.size(); ++iLod)
+				{
+					LodRecord& lodRec = curInfo.m_LODs[iLod];
+					const int lodDiff = wantedLOD - lodRec.m_LOD;
+					if (lodDiff <= 0)
+					{
+						lodRec.m_pointCount = amountOfPoints;
+					}
+					else
+					{
+						lodRec.m_pointCount = curContainerPtr->m_amountOfLODPoints[lodRec.m_LOD];
+					}
+				}
+			}
+			/////////////////////////////////////////////////////////////////////////////////////////////////////////
+			//unlock
+			//is there a timeout?
+			if (timeOutInMS > 0)
+			{
+				double currentTime = RealityComputing::Utility::Time::getTimeSinceEpochinMilliSec();
+				if (static_cast<int>(currentTime - startTime) > timeOutInMS)
+				{
+					//free
+					DeletePtr(curMemMap);
+					//not done loading all points yet
+					return false;
+				}
+			}
+		}
+
+		DeletePtr(curMemMap);
+
+		return float(nodesCompleted) / float(visibleLeafNodes.size());
 	}
 }

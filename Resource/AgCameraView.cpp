@@ -75,15 +75,15 @@ namespace ambergris {
 		if (!bound)
 			return false;
 
-		const AgVoxelTreeRunTime* voxelTree = Singleton<AgSceneDatabase>::instance().m_pointCloud.get(voxelTreeHandle);
+		const AgVoxelTreeRunTime* voxelTree = Singleton<AgSceneDatabase>::instance().m_pointCloudManager.getPointCloudProject().get(voxelTreeHandle);
 		if (!voxelTree)
 			return false;
 
 		float combinedMtx[16];
 		bx::mtxMul(combinedMtx, m_viewMtx, m_projMtx);
 		
-		float voxCorners[8][3];
-		bound->getCorners(voxCorners);
+		RCVector3d voxCorners[8];
+		getCorners(bound->m_bounds, voxCorners);
 
 		const RCPlane& nearPlane = m_frustum.getPlaneAt(AgFrustum::FRUST_NEAR);
 		bool anyBehind = false;
@@ -91,7 +91,7 @@ namespace ambergris {
 		RCBox ndcBounds;
 		for (int i = 0; i != 8; ++i)
 		{
-			RCVector3d cornerMS((double)voxCorners[i][0], (double)voxCorners[i][1], (double)voxCorners[i][2]);
+			RCVector3d cornerMS = voxCorners[i];
 			voxelTree->transformPoint(cornerMS, cornerWS);
 
 			// If part of the voxel is on the camera side of the near plane, then
@@ -188,5 +188,22 @@ namespace ambergris {
 		}
 
 		return lodLevel;
+	}
+
+	bool AgCameraView::isValid() const
+	{
+		return AgCameraView::kInvalidHandle != m_handle && m_camera && m_pass < AgRenderPass::E_VIEW_COUNT;
+	}
+
+	size_t AgCameraViewManager::getValidSize() const
+	{
+		size_t num = 0;
+		for (uint16_t ii = 0; ii < getSize(); ii ++)
+		{
+			const AgCameraView* view = get(ii);
+			if (view && AgCameraView::kInvalidHandle != view->m_handle && view->isValid())
+				num ++;
+		}
+		return num;
 	}
 }

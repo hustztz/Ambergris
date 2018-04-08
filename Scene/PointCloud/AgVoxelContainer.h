@@ -214,6 +214,8 @@ namespace ambergris {
 		AgResource::Handle              m_parentTreeHandle;
 		double                                  m_nodeRadius;                   //radius of this container in meters
 	public:
+		//TODO make private
+		AgVoxelTreeRunTime*                       m_parentTreePtr;
 		//TODO move this to interfaces?
 		std::vector<AgVoxelTerrestialPoint>       m_terrestialPointList;
 		std::vector<std::uint16_t>              m_terrestialSegIdList;

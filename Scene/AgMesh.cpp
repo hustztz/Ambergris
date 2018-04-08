@@ -29,7 +29,7 @@ namespace ambergris {
 			Sphere minSphere;
 			calcMinBoundingSphere(minSphere, vb->m_vertex_buffer.GetData(), vertexNum, stride);
 
-			if (minSphere.m_radius > maxSphere.m_radius)
+			/*if (minSphere.m_radius > maxSphere.m_radius)
 			{
 				bbox->m_sphere = maxSphere;
 			}
@@ -39,7 +39,7 @@ namespace ambergris {
 			}
 
 			toAabb(bbox->m_aabb, vb->m_vertex_buffer.GetData(), vertexNum, stride);
-			calcObb(bbox->m_obb, vb->m_vertex_buffer.GetData(), vertexNum, stride);
+			calcObb(bbox->m_obb, vb->m_vertex_buffer.GetData(), vertexNum, stride);*/
 		}
 	}
 

@@ -289,6 +289,19 @@ namespace ambergris {
 		}
 	}
 
+	std::uint64_t AgVoxelTreeRunTime::getAllocatedMemory() const
+	{
+		std::uint64_t amountOfMem = 0;
+
+		for (const auto& leafNode : m_leafNodeList)
+		{
+			amountOfMem += (sizeof(AgVoxelLidarPoint) * leafNode->m_lidarPointList.size());
+			amountOfMem += (sizeof(AgVoxelTerrestialPoint) * leafNode->m_terrestialPointList.size());
+		}
+
+		return amountOfMem;
+	}
+
 	namespace
 	{
 		template <class Iter>
@@ -322,10 +335,7 @@ namespace ambergris {
 			const AgCacheTransform* cacheTransform = Singleton<AgRenderResourceManager>::instance().m_transforms.get(m_global_transform_h);
 			if (cacheTransform)
 			{
-				RCVector3d minPoint((double)bbox->m_aabb.m_min[0], (double)bbox->m_aabb.m_min[1], (double)bbox->m_aabb.m_min[2]);
-				RCVector3d maxPoint((double)bbox->m_aabb.m_max[0], (double)bbox->m_aabb.m_max[1], (double)bbox->m_aabb.m_max[2]);
-				m_transformedBounds = RCBox(minPoint, maxPoint);
-				m_transformedBounds.transform(cacheTransform->m_transform);
+				m_transformedBounds = bbox->m_bounds.getTransformed(cacheTransform->m_transform);
 			}
 		}
 
@@ -343,12 +353,7 @@ namespace ambergris {
 			if (!cacheTransform)
 				continue;
 
-			RCVector3d minPoint((double)svoBbox->m_aabb.m_min[0], (double)svoBbox->m_aabb.m_min[1], (double)svoBbox->m_aabb.m_min[2]);
-			RCVector3d maxPoint((double)svoBbox->m_aabb.m_max[0], (double)svoBbox->m_aabb.m_max[1], (double)svoBbox->m_aabb.m_max[2]);
-			RCBox svoBounds = RCBox(minPoint, maxPoint);
-			svoBounds.transform(cacheTransform->m_transform);
-
-			leafNode->setTransformedSVOBound(svoBounds);
+			leafNode->setTransformedSVOBound(svoBbox->m_bounds.getTransformed(cacheTransform->m_transform));
 			leafNode->setTransformedCenter(leafNode->getTransformedSVOBound().getCenter());
 			leafNode->setTransformedNodeRadius(leafNode->getTransformedSVOBound().getMax().x - leafNode->getTransformedSVOBound().getMin().x);
 		}
@@ -445,14 +450,10 @@ namespace ambergris {
 		m_pointCloudProvider = fileHeader.m_pointCloudProvider;
 		m_totalAmountOfPoints = fileHeader.m_totalAmountOfPoints;
 
-		float boundsMin[3] = { (float)fileHeader.m_scanBounds.getMin().x, (float)fileHeader.m_scanBounds.getMin().y, (float)fileHeader.m_scanBounds.getMin().z };
-		float boundsMax[3] = { (float)fileHeader.m_scanBounds.getMax().x, (float)fileHeader.m_scanBounds.getMax().y, (float)fileHeader.m_scanBounds.getMax().z };
 		Singleton<AgRenderResourceManager>::instance().m_bboxManager.
-			setBoundingBox(m_bbox, boundsMin, boundsMax);
-		float svoBoundsMin[3] = { (float)fileHeader.m_svoBounds.getMin().x, (float)fileHeader.m_svoBounds.getMin().y, (float)fileHeader.m_svoBounds.getMin().z };
-		float svoBoundsMax[3] = { (float)fileHeader.m_svoBounds.getMax().x, (float)fileHeader.m_svoBounds.getMax().y, (float)fileHeader.m_svoBounds.getMax().z };
+			setBoundingBox(m_bbox, fileHeader.m_scanBounds);
 		Singleton<AgRenderResourceManager>::instance().m_bboxManager.
-			setBoundingBox(m_svoBounds, svoBoundsMin, svoBoundsMax);
+			setBoundingBox(m_svoBounds, fileHeader.m_svoBounds);
 		
 		mHasRGB = fileHeader.mHasRGB;
 		mHasNormals = fileHeader.mHasNormals;
@@ -542,7 +543,45 @@ namespace ambergris {
 			return false;
 	}
 
-	RCCode AgVoxelTreeRunTime::loadFromMedium(const std::wstring& projectFile, const std::wstring& fileName, bool isLightWeight)
+	RCCode AgVoxelTreeRunTime::checkFileFormat(const std::wstring& fileName) const
+	{
+		// check file size
+		long long fileSize = Filesystem::fileSize(fileName);
+		if (fileSize <= static_cast<long long>(sizeof(OctreeFileHeader)))
+			return rcUnknownFileFormat;
+
+		OctreeFileHeader fileHeader;
+		RCMemoryMapFile memmapFile(fileName.c_str());
+		if (!memmapFile.createFileHandleOnlyRead())
+			return rcUnknownFileFormat;
+		memmapFile.setFilePointer(0);
+		if (!memmapFile.readFile(&fileHeader, sizeof(OctreeFileHeader)))
+			return rcUnknownFileFormat;
+		if (fileHeader.m_magicWord[0] != 'A' || fileHeader.m_magicWord[1] != 'D' ||
+			fileHeader.m_magicWord[2] != 'O' || fileHeader.m_magicWord[3] != 'C' ||
+			fileHeader.m_magicWord[4] != 'T')
+		{
+			return rcUnknownFileFormat;
+		}
+
+		// check version        
+		if (_IsLegacyFileFormat(fileHeader.m_majorVersion, fileHeader.m_minorVersion))
+		{
+			return rcLegacyFileFormat;
+		}
+		else if (fileHeader.m_majorVersion > MAJOR_VERSION)
+		{
+			return rcFutureFileFormat;
+		}
+		else if (fileHeader.m_majorVersion != MAJOR_VERSION || fileHeader.m_minorVersion != MINOR_VERSION)
+		{
+			return rcDeprecatedFileFormat;
+		}
+
+		return rcOK;
+	}
+
+	RCCode AgVoxelTreeRunTime::loadFromMedium(const std::wstring& projectFile, const std::wstring& fileName)
 	{
 		bool legacyFileFormat = false;
 		RCCode rcCode = rcFailed;
@@ -580,7 +619,7 @@ namespace ambergris {
 			//setMirrorBallTextureFilePath(mirrorBallTexFile);
 
 			//if not light weight project load other data
-			if (!isLightWeight)
+			if (!Singleton<AgSceneDatabase>::instance().m_pointCloudManager.getLightWeight())
 			{
 				try
 				{
@@ -738,14 +777,10 @@ namespace ambergris {
 					OctreeLeafSaveData curLeaf = leafDataList[i];
 					AgVoxelContainer* runTimeLod = new AgVoxelContainer(this);
 
-					float nodeBoundsMin[3] = { (float)curLeaf.m_nodeBounds.getMin().x, (float)curLeaf.m_nodeBounds.getMin().y, (float)curLeaf.m_nodeBounds.getMin().z };
-					float nodeBoundsMax[3] = { (float)curLeaf.m_nodeBounds.getMax().x, (float)curLeaf.m_nodeBounds.getMax().y, (float)curLeaf.m_nodeBounds.getMax().z };
 					Singleton<AgRenderResourceManager>::instance().m_bboxManager.
-						setBoundingBox(runTimeLod->m_nodeBounds, nodeBoundsMin, nodeBoundsMax);
-					float svoBoundsMin[3] = { (float)curLeaf.m_svoBounds.getMin().x, (float)curLeaf.m_svoBounds.getMin().y, (float)curLeaf.m_svoBounds.getMin().z };
-					float svoBoundsMax[3] = { (float)curLeaf.m_svoBounds.getMax().x, (float)curLeaf.m_svoBounds.getMax().y, (float)curLeaf.m_svoBounds.getMax().z };
+						setBoundingBox(runTimeLod->m_nodeBounds, curLeaf.m_nodeBounds);
 					Singleton<AgRenderResourceManager>::instance().m_bboxManager.
-						setBoundingBox(runTimeLod->m_svoBounds, svoBoundsMin, svoBoundsMax);
+						setBoundingBox(runTimeLod->m_svoBounds, curLeaf.m_svoBounds);
 
 					runTimeLod->m_maximumLOD = curLeaf.m_maxDepth;
 					runTimeLod->m_amountOfPoints = curLeaf.m_amountOfPoints;
@@ -925,7 +960,7 @@ namespace ambergris {
 		return false;
 	}
 
-	bool AgVoxelTreeRunTime::onLoad(const std::wstring& projectFile, const AgVoxelTreeNode& treeNode, bool isLightWeight)
+	bool AgVoxelTreeRunTime::onLoad(const std::wstring& projectFile, const AgVoxelTreeNode& treeNode)
 	{
 		mId = treeNode.id;
 		m_useFileHeaderTransform = false;
@@ -943,7 +978,7 @@ namespace ambergris {
 
 		std::wstring fileName = treeNode.path;
 		std::wstring existFileName = L"";
-		if (Filesystem::findFirstExisting(existFileName, fileName, mSearchPaths))
+		if (Filesystem::findFirstExisting(existFileName, fileName, Singleton<AgSceneDatabase>::instance().m_pointCloudManager.getSearchPaths()))
 		{
 			m_fileName = existFileName;
 
@@ -995,7 +1030,7 @@ namespace ambergris {
 		else
 		{
 			// if the file exists, overwrite the variables with file content
-			RCCode rcCode = loadFromMedium(projectFile, m_fileName, isLightWeight);
+			RCCode rcCode = loadFromMedium(projectFile, m_fileName);
 			if (rcCode != rcOK && rcCode != rcLegacyFileFormat)
 				return false;
 

@@ -1,7 +1,12 @@
 #include "AgVoxelContainer.h"
 #include "AgVoxelTreeRunTime.h"
+#include "AgVoxelTreeRawPointConverter.h"
+#include "../AgSceneDatabase.h"
 
 #include <common/RCMemoryMapFile.h>
+#include <utility/RCMemory.h>
+#include <utility/RCAssert.h>
+#include <utility/RCSpatialReference.h>
 
 using namespace ambergris::RealityComputing::Common;
 using namespace ambergris::RealityComputing::Utility;
@@ -40,7 +45,7 @@ namespace ambergris {
 		memset(&m_amountOfOctreeNodes[0], 0, sizeof(int) * 32);
 	}
 
-	/*void AgVoxelContainer::loadTerrestialLODInternal(int newLOD, RCMemoryMapFile* memMapFile, bool lock)
+	void AgVoxelContainer::loadTerrestialLODInternal(int newLOD, RCMemoryMapFile* memMapFile, bool lock)
 	{
 		int amountOfPoints = m_amountOfLODPoints[newLOD];
 		if (amountOfPoints <= 0)
@@ -50,13 +55,13 @@ namespace ambergris {
 		int oldPoints = 0;
 		int startLod = 0;
 
-		alViewport* viewportPtr = m_parentTreePtr->getWorld()->getActiveViewport();
+		/*alViewport* viewportPtr = m_parentTreePtr->getWorld()->getActiveViewport();
 		if (viewportPtr && (viewportPtr->getPointCloudDisplayType() == POINTCLOUD_DISPLAY_SEGMENTS || viewportPtr->testGetShowSegment()))
 		{
 			oldPoints = 0;
 			startLod = 0;
 		}
-		else
+		else*/
 		{
 			if (m_currentLODLoaded > 0) //only load in additional data, not starting from beginning!
 			{
@@ -113,7 +118,7 @@ namespace ambergris {
 					}
 				}
 
-				if (viewportPtr && (viewportPtr->getPointCloudDisplayType() == POINTCLOUD_DISPLAY_SEGMENTS || viewportPtr->testGetShowSegment()))
+				/*if (viewportPtr && (viewportPtr->getPointCloudDisplayType() == POINTCLOUD_DISPLAY_SEGMENTS || viewportPtr->testGetShowSegment()))
 				{
 					if (m_segmentOffsetStarts)
 					{
@@ -124,7 +129,7 @@ namespace ambergris {
 							rawPoint.setRGBA(RCVector4ub((std::uint8_t)color.x, (std::uint8_t)color.y, (std::uint8_t) color.z, 255));
 						}
 					}
-				}
+				}*/
 			}
 		}
 
@@ -167,7 +172,7 @@ namespace ambergris {
 			if (hasDeletedPts) {
 				//set flags and for both the voxel and the parent scan
 				setHasPeristentDeletedPts(true);
-				m_parentTreePtr->setHasPeristentDeletedPts(true);
+				//m_parentTreePtr->setHasPeristentDeletedPts(true);
 			}
 
 			//applyCrop();
@@ -176,7 +181,7 @@ namespace ambergris {
 			m_currentLODLoaded = newLOD;
 			m_currentDrawLOD = newLOD;
 
-			if (!m_parentTreePtr->getWorld()->getPointCloudProject()->getLightWeight())
+			if (!Singleton<AgSceneDatabase>::instance().m_pointCloudManager.getLightWeight())
 			{
 
 				//RCTimer regionTimer;
@@ -185,7 +190,7 @@ namespace ambergris {
 
 				updateLayerEffectWhenRefinePoints(oldPoints);
 
-				if (!m_parentTreePtr->getWorld()->getPointCloudProject()->getIgnoreClip())
+				if (!Singleton<AgSceneDatabase>::instance().m_pointCloudManager.getIgnoreClip())
 					updateClipEffectWhenRefinePoints(oldPoints);
 
 				//if (RCRegionConfig::isTimeLogEnabled())
@@ -197,7 +202,7 @@ namespace ambergris {
 		}
 	}
 
-	void AgVoxelContainer::clearPersistentDeleteFlags(RCMemoryMapFile* memMapFile)
+	/*void AgVoxelContainer::clearPersistentDeleteFlags(RCMemoryMapFile* memMapFile)
 	{
 		if (!getHasPeristentDeletedPts())
 			return;
@@ -558,7 +563,7 @@ namespace ambergris {
 		// re-open the file stream
 		pEngineState->openFileStream(fileId, m_parentTreePtr->getFileName()); //reopen the read only file handle
 		return good;
-	}
+	}*/
 
 
 	void AgVoxelContainer::loadLidarLODInternal(int lodLevel, RCMemoryMapFile* memMapFile, bool lock)
@@ -638,13 +643,13 @@ namespace ambergris {
 				auto& rawPoint = rawPoints[i];
 				if (pMentorTransformation != NULL)
 				{
-					auto coord = VoxelTreeRawPointConverter::rawPointToWorldCoord(this, rawPoint);
+					auto coord = AgVoxelTreeRawPointConverter::rawPointToWorldCoord(this, rawPoint);
 
-					coord = m_parentTreePtr->getWorld()->globalToWorld(coord);
+					coord = Singleton<AgSceneDatabase>::instance().mWorldCoordInfo.globalToWorld(coord);
 					pMentorTransformation->transform(coord);
-					coord = m_parentTreePtr->getWorld()->worldToGlobal(coord);
+					coord = Singleton<AgSceneDatabase>::instance().mWorldCoordInfo.worldToGlobal(coord);
 
-					point.setRawCoord(VoxelTreeRawPointConverter::worldCoordToRawPoint(this, coord).convertTo<float>());
+					point.setRawCoord(AgVoxelTreeRawPointConverter::worldCoordToRawPoint(this, coord).convertTo<float>());
 				}
 				else
 				{
@@ -671,7 +676,7 @@ namespace ambergris {
 			if (hasDeletedPts) {
 				//set flags and for both the voxel and the parent scan
 				setHasPeristentDeletedPts(true);
-				m_parentTreePtr->setHasPeristentDeletedPts(true);
+				//m_parentTreePtr->setHasPeristentDeletedPts(true);
 			}
 
 			if (m_timeStampOffsetStarts)
@@ -687,15 +692,15 @@ namespace ambergris {
 			m_currentLODLoaded = lodLevel;
 			m_currentDrawLOD = lodLevel;
 
-			if (!m_parentTreePtr->getWorld()->getPointCloudProject()->getLightWeight())
+			if (!Singleton<AgSceneDatabase>::instance().m_pointCloudManager.getLightWeight())
 			{
 				updateLayerEffectWhenRefinePoints(oldPoints);
 
-				if (!m_parentTreePtr->getWorld()->getPointCloudProject()->getIgnoreClip())
+				if (!Singleton<AgSceneDatabase>::instance().m_pointCloudManager.getIgnoreClip())
 					updateClipEffectWhenRefinePoints(oldPoints);
 			}
 		}
-	}*/
+	}
 
 	void AgVoxelContainer::getLODInternalLoadInfo(int newLOD, std::uint64_t& fileOffset, int& bytesToRead) const
 	{
@@ -854,39 +859,39 @@ namespace ambergris {
 	//	m_currentLODLoaded = lodLevel;
 	//}
 
-	//void AgVoxelContainer::loadTerrestialLODInternalNoSelection(int newLOD, RCMemoryMapFile* memMapFile /*= NULL */)
-	//{
+	void AgVoxelContainer::loadTerrestialLODInternalNoSelection(int newLOD, RCMemoryMapFile* memMapFile /*= NULL */)
+	{
 
-	//	int amountOfPoints = m_amountOfLODPoints[newLOD];
+		int amountOfPoints = m_amountOfLODPoints[newLOD];
 
-	//	std::vector<AgVoxelLeafNode> rawPoints(amountOfPoints);
-	//	m_terrestialPointList.resize(amountOfPoints);
+		std::vector<AgVoxelLeafNode> rawPoints(amountOfPoints);
+		m_terrestialPointList.resize(amountOfPoints);
 
-	//	if (!memMapFile)
-	//	{
-	//		RCMemoryMapFile memmap(m_parentTreePtr->getFileName().c_str());
-	//		if (memmap.createFileHandleOnlyRead())
-	//		{
-	//			memmap.setFilePointer(m_pointDataOffsetStart);
-	//			memmap.readFile(&rawPoints[0], sizeof(AgVoxelLeafNode) * amountOfPoints);
-	//		}
-	//	}
-	//	else
-	//	{
-	//		memMapFile->setFilePointer(m_pointDataOffsetStart);
-	//		memMapFile->readFile(&rawPoints[0], sizeof(VoxelLeafNode) * amountOfPoints);
-	//	}
+		if (!memMapFile)
+		{
+			RCMemoryMapFile memmap(m_parentTreePtr->getFileName().c_str());
+			if (memmap.createFileHandleOnlyRead())
+			{
+				memmap.setFilePointer(m_pointDataOffsetStart);
+				memmap.readFile(&rawPoints[0], sizeof(AgVoxelLeafNode) * amountOfPoints);
+			}
+		}
+		else
+		{
+			memMapFile->setFilePointer(m_pointDataOffsetStart);
+			memMapFile->readFile(&rawPoints[0], sizeof(AgVoxelLeafNode) * amountOfPoints);
+		}
 
-	//	//convert to internal format
-	//	for (int i = 0; i < amountOfPoints; i++)
-	//	{
-	//		auto& rawPoint = rawPoints[i];
-	//		m_terrestialPointList[i].setRawCoord(rawPoint.getRawOffsetFromBoundingBox());
-	//		m_terrestialPointList[i].setRGBA(rawPoint.getRGBA());
-	//		m_terrestialPointList[i].setNormalIndex(rawPoint.getNormal());
-	//	}
-	//	m_currentLODLoaded = newLOD;
-	//}
+		//convert to internal format
+		for (int i = 0; i < amountOfPoints; i++)
+		{
+			auto& rawPoint = rawPoints[i];
+			m_terrestialPointList[i].setRawCoord(rawPoint.getRawOffsetFromBoundingBox());
+			m_terrestialPointList[i].setRGBA(rawPoint.getRGBA());
+			m_terrestialPointList[i].setNormalIndex(rawPoint.getNormal());
+		}
+		m_currentLODLoaded = newLOD;
+	}
 
 	/*std::vector<AgVoxelLeafNode>
 		AgVoxelContainer::loadLODPointToPointList(int newLOD, RCMemoryMapFile* memMapFile) const
@@ -984,23 +989,23 @@ namespace ambergris {
 		}
 
 	}*/
-	/*void AgVoxelContainer::updateClipEffectWhenRefinePoints(size_t pointStartIndex)
+	void AgVoxelContainer::updateClipEffectWhenRefinePoints(size_t pointStartIndex)
 	{
-		if (m_parentTreePtr->getWorld()->getCanDrawWorld() == false)
+		/*if (m_parentTreePtr->getWorld()->getCanDrawWorld() == false)
 			return;
 
 		m_parentTreePtr->getWorld()->getPointSelectionManager() ->
-			getPointClipManager()->updateClipEffecOnAgVoxelContainer(this, pointStartIndex);
+			getPointClipManager()->updateClipEffecOnAgVoxelContainer(this, pointStartIndex);*/
 	}
 
 	void AgVoxelContainer::updateLayerEffectWhenRefinePoints(size_t pointStartIndex)
 	{
-		if (m_parentTreePtr->getWorld()->getCanDrawWorld() == false)
+		/*if (m_parentTreePtr->getWorld()->getCanDrawWorld() == false)
 			return;
 
 		m_parentTreePtr->getWorld()->getPointSelectionManager() ->
-			refineSelectionEffectOnAgVoxelContainer(this, pointStartIndex);
-	}*/
+			refineSelectionEffectOnAgVoxelContainer(this, pointStartIndex);*/
+	}
 
 	void AgVoxelContainer::clearAllViewId()
 	{

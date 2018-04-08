@@ -30,6 +30,7 @@ namespace ambergris {
 		uint32_t getWidth() const { return m_width; }
 		uint32_t getHeight() const { return m_height; }
 		float getCameraFovy() const;
+		bool isValid() const;
 
 	protected:
 		bool _CalcPixelSize(double* pixBounds, AgBoundingbox::Handle voxelBounds, AgResource::Handle voxelTree) const;
@@ -52,6 +53,7 @@ namespace ambergris {
 	class AgCameraViewManager : public AgResourceContainer<AgCameraView, VIEW_MAX_COUNT>
 	{
 	public:
+		size_t getValidSize() const;
 	protected:
 	private:
 	};

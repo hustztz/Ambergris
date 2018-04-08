@@ -66,13 +66,14 @@ public:
 		const AgSceneDatabase& sceneDB = Singleton<AgSceneDatabase>::instance();
 
 		bool touched = false;
-		Aabb sceneAabb;
-		sceneAabb.m_min[0] = std::numeric_limits<float>::max();
-		sceneAabb.m_min[1] = std::numeric_limits<float>::max();
-		sceneAabb.m_min[2] = std::numeric_limits<float>::max();
-		sceneAabb.m_max[0] = std::numeric_limits<float>::min();
-		sceneAabb.m_max[1] = std::numeric_limits<float>::min();
-		sceneAabb.m_max[2] = std::numeric_limits<float>::min();
+		double bbox_min[3];
+		double bbox_max[3];
+		bbox_min[0] = std::numeric_limits<double>::max();
+		bbox_min[1] = std::numeric_limits<double>::max();
+		bbox_min[2] = std::numeric_limits<double>::max();
+		bbox_max[0] = std::numeric_limits<double>::min();
+		bbox_max[1] = std::numeric_limits<double>::min();
+		bbox_max[2] = std::numeric_limits<double>::min();
 		const int nNodeNum = (const int)sceneDB.m_objectManager.getSize();
 		for (int i = 0; i < nNodeNum; i++)
 		{
@@ -87,41 +88,27 @@ public:
 			if(!transform)
 				continue;
 
-			Aabb nodeAabb = bbox->m_aabb;
-			float tmpAabb[4];
-			tmpAabb[0] = nodeAabb.m_min[0];
-			tmpAabb[1] = nodeAabb.m_min[1];
-			tmpAabb[2] = nodeAabb.m_min[2];
-			tmpAabb[3] = 1.0f;
-			float transformData[16];
-			transform->getFloatTransform(transformData);
-			float nodeMin[4];
-			bx::vec4MulMtx(nodeMin, tmpAabb, transformData);
-			tmpAabb[0] = nodeAabb.m_max[0];
-			tmpAabb[1] = nodeAabb.m_max[1];
-			tmpAabb[2] = nodeAabb.m_max[2];
-			float nodeMax[4];
-			bx::vec4MulMtx(nodeMax, tmpAabb, transformData);
+			RealityComputing::Common::RCBox bounds = bbox->m_bounds.getTransformed(transform->m_transform);
 
-			if (nodeMin[0] < sceneAabb.m_min[0])
-				sceneAabb.m_min[0] = nodeMin[0];
-			if (nodeMin[1] < sceneAabb.m_min[1])
-				sceneAabb.m_min[1] = nodeMin[1];
-			if (nodeMin[2] < sceneAabb.m_min[2])
-				sceneAabb.m_min[2] = nodeMin[2];
-			if (nodeMax[0] > sceneAabb.m_max[0])
-				sceneAabb.m_max[0] = nodeMax[0];
-			if (nodeMax[1] > sceneAabb.m_max[1])
-				sceneAabb.m_max[1] = nodeMax[1];
-			if (nodeMax[2] > sceneAabb.m_max[2])
-				sceneAabb.m_max[2] = nodeMax[2];
+			if (bounds.getMin().x < bbox_min[0])
+				bbox_min[0] = bounds.getMin().x;
+			if (bounds.getMin().y < bbox_min[1])
+				bbox_min[1] = bounds.getMin().y;
+			if (bounds.getMin().z < bbox_min[2])
+				bbox_min[2] = bounds.getMin().z;
+			if (bounds.getMax().x > bbox_max[0])
+				bbox_max[0] = bounds.getMax().x;
+			if (bounds.getMax().y > bbox_max[1])
+				bbox_max[1] = bounds.getMax().y;
+			if (bounds.getMax().z > bbox_max[2])
+				bbox_max[2] = bounds.getMax().z;
 			touched = true;
 		}
 		if (!touched)
 			return;
 
-		float scale = std::max((float)(sceneAabb.m_max[0] - sceneAabb.m_min[0]), std::max((float)(sceneAabb.m_max[1] - sceneAabb.m_min[1]), (float)(sceneAabb.m_max[2] - sceneAabb.m_min[2])));
-		float target[3] = { (sceneAabb.m_max[0] + sceneAabb.m_min[0]) * 0.5f, (sceneAabb.m_max[1] + sceneAabb.m_min[1]) * 0.5f, (sceneAabb.m_max[2] + sceneAabb.m_min[2]) * 0.5f };
+		float scale = std::max((float)(bbox_max[0] - bbox_min[0]), std::max((float)(bbox_max[1] - bbox_min[1]), (float)(bbox_max[2] - bbox_min[2])));
+		float target[3] = { (float)(bbox_max[0] + bbox_min[0]) * 0.5f, (float)(bbox_max[1] + bbox_min[1]) * 0.5f, (float)(bbox_max[2] + bbox_min[2]) * 0.5f };
 		float eye[3] = { scale, 0.0f, 0.0f };
 
 		camera->setTarget(target);

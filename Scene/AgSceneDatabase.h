@@ -1,6 +1,6 @@
 #pragma once
 #include "AgMesh.h"
-#include "PointCloud/AgPointCloudProject.h"
+#include "PointCloud/AgRealityComputingManager.h"
 #include "Foundation/Singleton.h"
 #include "Foundation/AgWorldCoordInfo.h"
 
@@ -36,7 +36,7 @@ namespace ambergris {
 		SelectResult	m_select_result;
 
 		AgObjectManager			m_objectManager;
-		AgPointCloudProject		m_pointCloud;
+		AgRealityComputingManager	m_pointCloudManager;
 
 		AgWorldCoordInfo mWorldCoordInfo;
 	};

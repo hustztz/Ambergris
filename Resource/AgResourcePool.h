@@ -68,6 +68,14 @@ namespace ambergris {
 			return allocate<T>(allocator);
 		}*/
 
+		void erase(AgResource::Handle id)
+		{
+			if (id < 0 || id >= getSize())
+				return;
+			m_resource_arr[id].reset();
+			m_resource_arr[id] = nullptr;
+		}
+
 		size_t getSize() const { return m_resource_arr.size(); }
 		const T* get(AgResource::Handle id) const {
 			//std::lock_guard<std::mutex> lck(m_mutex);

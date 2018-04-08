@@ -20,6 +20,8 @@ namespace ambergris {
 
 		//virtual void setGlobalPosition(double* val);
 		bool isVisible() const { return m_isVisible; }
+		AgCacheTransform::Handle setTransform(double* val);
+		RealityComputing::Common::RCTransform getTransform() const;
 
 		AgBoundingbox::Handle	m_bbox;
 		stl::string		m_name;
